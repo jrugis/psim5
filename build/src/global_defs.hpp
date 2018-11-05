@@ -1,0 +1,86 @@
+/*
+ * global_defs.hpp
+ *
+ *  Created on: 26/04/2018
+ *      Author: jrugis
+ */
+
+#ifndef DEFS_H_
+#define DEFS_H_
+
+#include <mpi.h>
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
+
+//************************************************************************ 
+// MPI defs, macros
+
+#define MPI_ERROR_ABORT -101
+#define MPI_NODES_ABORT -102
+#define ACINUS_CELL_TAG 400
+#define CELL_CELL_TAG 401
+
+// mpi shutdown on error
+#define mpi_abort(err) \
+  {std::cout << "Program shutdown error code: " << err << std::endl; \
+  MPI_Abort(MPI_COMM_WORLD, err); }
+
+// mpi error checking macro
+#define MPI_CHECK(call) \
+  if((call) != MPI_SUCCESS) { \
+    std::cout << "MPI error calling: " << call << std::endl; \
+    mpi_abort(MPI_ERROR_ABORT); }
+
+//************************************************************************ 
+// acinus to cell mpi message
+// delta time, current time, solver error
+enum acinus2cell{ \
+  dTime, cTime, sError, \
+  ACCOUNT};
+
+//************************************************************************ 
+// cell to cell mpi message
+// triangle index, value
+enum cell2cell{ \
+  tInd, tVal, \
+  C2CCOUNT};
+
+//************************************************************************ 
+// cell to cell connectivity
+// this_triangle, other_cell, other_triangle
+enum cell_conn{ \
+  tTri, oCell, oTri, \
+  CCONNCOUNT};
+
+//************************************************************************ 
+// modelling typedefs
+typedef double tCoord;
+typedef double tDist;
+typedef double tCalcs;
+
+//************************************************************************ 
+// some convenience typedefs
+typedef Eigen::Matrix<tCalcs, Eigen::Dynamic, Eigen::Dynamic> MatrixXXC;
+typedef Eigen::Matrix<tCalcs, Eigen::Dynamic, 1> MatrixX1C;
+typedef Eigen::SparseMatrix<tCalcs> SparseMatrixTCalcs;
+
+//************************************************************************ 
+// the 3D model parameters
+enum model_parameters{ \
+  delT, totalT, reduce, \
+  PLCsrt, PLCfin, \
+  c0, ip0, ce0, gama, \
+  Dc, Dp, De, Fc, Fip, \
+  d_RyR, w_RYR, V_RyR, K_RyR, K_RyR2, m_RyR, n_RyR, \
+  k_beta, K_p, K_c, K_h, kIPR, \
+  V_p, k_p, K_bar, \
+  d_PLC, w_PLC, V_3K, V_5K, K_PLC, K3K, VPLC, \
+  h0, K_tau, tau_max, \
+  g0, K_hRyR, tau, \
+  PCOUNT};
+
+//************************************************************************ 
+//************************************************************************ 
+
+#endif /* DEFS_H_ */
+
