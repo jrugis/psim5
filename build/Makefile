@@ -23,7 +23,7 @@ CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -march=native -mtune=native
 ## program
 
 ## Mahuika
-CPP_INCLUDES = -I/usr/include -I./src
+CPP_INCLUDES = -I/usr/include -I./src/ViennaCL-1.7.1
 
 EXE = ../run/psim5
 OBJS = main.o utils.o cAcinus.o cCell_x.o cVCLSolver.o cCellMesh.o
