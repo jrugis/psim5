@@ -1,6 +1,6 @@
+###########################################################################################
 ##
-## on mahuika: sbatch run.sl
-##   check using: squeue, sacct
+## target platform: mahuika
 ##
 ###########################################################################################
 ## C++
@@ -24,10 +24,8 @@ CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -march=native -mtune=native
 
 ## Mahuika
 CPP_INCLUDES = -I/usr/include -I./src
-## Workstation
-#CPP_INCLUDES = -I/usr/include -I/usr/include/eigen3
 
-EXE = ../run/parotid_sim_5
+EXE = ../run/psim5
 OBJS = main.o utils.o cAcinus.o cCell_x.o cVCLSolver.o cCellMesh.o
 SRC = ./src
 
