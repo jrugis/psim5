@@ -21,8 +21,5 @@ make
 Run
 ---
 cd psim5/run
+python riun_sim.py
 
-
-Post
-----
-cd psim5/post

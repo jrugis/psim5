@@ -14,3 +14,8 @@
 
 echo "$HOSTNAME"
 srun --ntasks=8 psim5
+rm psim5
+
+ml Python/2.7.14-gimkl-2017a
+srun --ntasks=1 python "summary_plot.py"
+rm summary_plot.py
