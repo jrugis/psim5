@@ -16,7 +16,6 @@ Build
 -----
 cd psim5/build
 make
-chmod 770 ../run/psim5
 
 
 Run

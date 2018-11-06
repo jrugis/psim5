@@ -2,7 +2,7 @@
 # psim5 excludes
 
 psim5
-
+*/results/*
 
 #----------------------------------
 # Mac excludes
