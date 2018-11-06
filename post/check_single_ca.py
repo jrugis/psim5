@@ -6,10 +6,17 @@ import struct
 import subprocess
 import sys
 
+if len(sys.argv) != 5:
+  print()
+  print("usage: python check_single_ca.py <results path> <cell#> <nodes stride> <steps stride>")
+  print("  e.g. python check_single_ca.py 181106_033523/parms_test_0 1 500 1")
+  print()
+  sys.exit()
 
 results_dir = str(sys.argv[1]) # path to results e.g. 181106_011232/parms_test_0
-nodes_skip = str(sys.argv[2])  # subsample data stride
-steps_skip = str(sys.argv[3])  #
+cell = str(sys.argv[2])        # cell number
+nodes_skip = str(sys.argv[3])  # subsample data stride
+steps_skip = str(sys.argv[4])  #
 
 ##################################################################
 ## read in a simulation data file
@@ -35,9 +42,9 @@ os.chdir(path)
 
 # plot the calcium concentration
 path = csdir + "/../run/results/" + results_dir
-data = get_data(path + "/a1c2_ca.bin", 13718, 100)[0::int(nodes_skip),0::int(steps_skip)]
+data = get_data(path + "/a1c2_cer.bin", 13718, 100)[0::int(nodes_skip),0::int(steps_skip)]
 p1 = plt.plot(np.transpose(data))
-plt.savefig("a1c2_ca.pdf")
+plt.savefig("a1c2_cer.pdf")
 plt.show(p1)
 
 

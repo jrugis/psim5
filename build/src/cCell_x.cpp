@@ -54,11 +54,13 @@ cCell_x::cCell_x(std::string host_name, int my_rank, int a_rank) {
   solver = new cVCLSolver(this);
   ca_file.open(id + "_ca.bin", std::ios::binary);
   ip3_file.open(id + "_ip3.bin", std::ios::binary);
+  cer_file.open(id + "_cer.bin", std::ios::binary);
 }
 
 cCell_x::~cCell_x() {
   ca_file.close();
   ip3_file.close();
+  cer_file.close();
   out.close();
   delete solver;
   delete mesh;
@@ -294,7 +296,7 @@ Array1VC cCell_x::get_body_reactions(tCalcs c, tCalcs ip, tCalcs ce, tCalcs g, t
   Array1VC reactions;
   reactions(0) = (J_RYR * (ce - c)) - J_SERCA;
   reactions(1) = vplc - vdeg;
-  reactions(2) = reactions(0) / p[gama];
+  reactions(2) = -reactions(0) / p[gama];
 
   return reactions;
 }
@@ -412,6 +414,7 @@ void cCell_x::run() {
     // save (previous) result
     save_results(ca_file, 0);   // 0 = calcium
     save_results(ip3_file, 1);  // 1 = ip3
+    save_results(cer_file, 2);  // 2 = cer
     prev_solvec = solvec;
     step++;
 

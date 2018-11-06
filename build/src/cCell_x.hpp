@@ -46,7 +46,7 @@ public:
 private:
   std::string id;
   std::string acinus_id;
-  std::ofstream out, ca_file, ip3_file;
+  std::ofstream out, ca_file, ip3_file, cer_file;
   int cell_number, acinus_rank;
   cCellMesh* mesh;
   cVCLSolver* solver;
