@@ -33,12 +33,10 @@ def get_data(fname, rows, cols):
 def get_sim_time(fname):
   f1 = open(fname, "r")
   for line in f1:
-    if line.startswith("%! delT totalT Tstride"):
-      v = next(f1).rstrip().split()
+    if "delT" in line: delt = float(line.rstrip().split()[1])
+    if "totalT" in line: totalt = float(line.rstrip().split()[1])
+    if "Tstride" in line: tstride = float(line.rstrip().split()[1])
   f1.close()
-  delt = float(v[0])
-  totalt = float(v[1])
-  tstride = float(v[2])
   steps = int(totalt / delt) 
   ndelt = delt * tstride
   nsteps = int(steps / tstride)
