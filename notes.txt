@@ -21,5 +21,12 @@ make
 Run
 ---
 cd psim5/run
-python riun_sim.py
 
+copy/edit parms_xxxx.dat
+     edit run_sim.py
+     edit run.sl
+
+python run_sim.py
+
+cd psim5/run/results/XXXX/XXXX
+summary_plot.pdf
