@@ -10,7 +10,7 @@
 % 
 %
 %===================================================================
-% simulation time step(s), total simulation time(s), reduce output (0=no, 1=yes)
+% simulation time step(s), total simulation time(s), storage stride
 %! delT totalT Tstride
 0.01 1.0 1
 %----------------------------------------------------

@@ -74,7 +74,7 @@ for cell in range(ncells):
   plots[0, cell].set_title("Cell " + str(cell+1))
   for i, dtype in enumerate(dtypes):
     data = get_data(dname + '_' + dtype + ".bin", nodes, tsteps)
-    x = np.linspace(0.0, totalt - delt, tsteps)
+    x = np.linspace(delt, totalt, tsteps)
     y1 = data[0]
     y2 = data[1]
     plots[i, cell].plot(x, y1, x, y2, color='steelblue')
