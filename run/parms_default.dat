@@ -11,8 +11,8 @@
 %
 %===================================================================
 % simulation time step(s), total simulation time(s), reduce output (0=no, 1=yes)
-%! delT totalT reduce
-0.01 1.0 0
+%! delT totalT Tstride
+0.01 1.0 1
 %----------------------------------------------------
 % PLC start time(s), PLC finish time(s)
 %! PLCsrt PLCfin

@@ -67,7 +67,7 @@ typedef Eigen::SparseMatrix<tCalcs> SparseMatrixTCalcs;
 //************************************************************************ 
 // the 3D model parameters
 enum model_parameters{ \
-  delT, totalT, reduce, \
+  delT, totalT, Tstride, \
   PLCsrt, PLCfin, \
   c0, ip0, ce0, gama, \
   Dc, Dp, De, Fc, Fip, \

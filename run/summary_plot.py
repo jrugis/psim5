@@ -8,6 +8,9 @@ import numpy as np
 import os
 import struct
 
+ncells = 7
+dtypes = ["ca", "ip3", "cer"]
+
 ##################################################################
 # functions
 ##################################################################
@@ -26,13 +29,21 @@ def get_data(fname, rows, cols):
   return data
 
 # get simulation time data
+# NOTE: adjusted for possible time step stride
 def get_sim_time(fname):
   f1 = open(fname, "r")
   for line in f1:
-    if line.startswith("%! delT totalT"):
+    if line.startswith("%! delT totalT Tstride"):
       v = next(f1).rstrip().split()
   f1.close()
-  return float(v[0]), float(v[1])
+  delt = float(v[0])
+  totalt = float(v[1])
+  tstride = float(v[2])
+  steps = int(totalt / delt) 
+  ndelt = delt * tstride
+  nsteps = int(steps / tstride)
+  ntotalt = ndelt * nsteps
+  return ndelt, ntotalt, nsteps
 
 # get cell node count
 def get_node_count(fname):
@@ -50,21 +61,27 @@ def get_node_count(fname):
 
 print("create summary plot")
 
-dname = "a1c2"
+fig, plots = plt.subplots(len(dtypes), ncells, sharex='col', squeeze=False)
+plt.subplots_adjust(wspace = 0.5)
+fig.set_size_inches(ncells * 3.8, len(dtypes) * 2.5)
+fig.text(0.02, 0.96, os.getcwd(), fontsize=10)
 
-delt, totalt = get_sim_time("a1.dat")
-tsteps = int(totalt / delt)
-nodes = get_node_count(dname + ".out")
+delt, totalt, tsteps = get_sim_time("a1.dat")
+for cell in range(ncells):
+  dname = "a1c" + str(cell + 1)
+  nodes = get_node_count(dname + ".out")
+  plots[len(dtypes)-1, cell].set_xlabel(" time (s)")
+  plots[0, cell].set_title("Cell " + str(cell+1))
+  for i, dtype in enumerate(dtypes):
+    data = get_data(dname + '_' + dtype + ".bin", nodes, tsteps)
+    x = np.linspace(0.0, totalt - delt, tsteps)
+    y1 = data[0]
+    y2 = data[1]
+    plots[i, cell].plot(x, y1, x, y2, color='steelblue')
+    plots[i, cell].fill_between(x, y1, y2, color='steelblue')
+    if cell == 0:
+      plots[i, cell].set_ylabel(dtype + " (uM)")
 
-# plot the calcium concentration
-fig = plt.figure()
-data = get_data(dname + "_cer.bin", nodes, tsteps)
-
-x = np.linspace(0.0, totalt, tsteps)
-y1 = data[0]
-y2 = data[1]
-plt.plot(x, y1, x, y2, color='steelblue')
-plt.fill_between(x, y1, y2, color='steelblue')
-fig.savefig(dname + "_cer.pdf")
+fig.savefig("summary_plot.pdf")
 
 

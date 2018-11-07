@@ -411,12 +411,15 @@ void cCell_x::run() {
 
   int step = 0;
   while(true) {
-    // save (previous) result
-    save_results(ca_file, 0);   // 0 = calcium
-    save_results(ip3_file, 1);  // 1 = ip3
-    save_results(cer_file, 2);  // 2 = cer
-    prev_solvec = solvec;
     step++;
+
+    // save (previous) result
+    if(step % int(p[Tstride]) == 0) {
+      save_results(ca_file, 0);   // 0 = calcium
+      save_results(ip3_file, 1);  // 1 = ip3
+      save_results(cer_file, 2);  // 2 = cer
+    }
+    prev_solvec = solvec;
 
     // get current time and time step value from acinus
     MPI_CHECK(MPI_Recv(&msg, ACCOUNT, MPI_FLOAT, acinus_rank, ACINUS_CELL_TAG, MPI_COMM_WORLD, &stat));
