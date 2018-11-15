@@ -21,7 +21,7 @@ void utils::fatal_error(const std::string msg, std::ofstream& out){
 }
 
 // NOTE: used by both the acinus and cell objects
-void utils::get_parameters(const std::string file_id, tCalcs* p, std::ofstream& out){
+void utils::get_parameters(const std::string file_id, int cell_num, tCalcs* p, std::ofstream& out){
   std::string file_name = file_id + ".dat";
   std::ifstream model_file(file_name); // open the model parameters file
   std::string line;                    // file line buffer
@@ -31,10 +31,10 @@ void utils::get_parameters(const std::string file_id, tCalcs* p, std::ofstream& 
     "PLCsrt", "PLCfin", \
     "c0", "ip0", "ce0", "Gamma", \
     "Dc", "Dp", "De", "Fc", "Fip", \
-    "d_RyR", "w_RYR", "V_RyR", "K_RyR", "K_RyR2", "m_RyR", "n_RyR", \
+    "d_RyR", "V_RyR", "K_RyR", "K_RyR2", "m_RyR", "n_RyR", \
     "k_beta", "K_p", "K_c", "K_h", "kIPR", \
     "V_p", "k_p", "K_bar", \
-    "d_PLC", "w_PLC", "V_3K", "V_5K", "K_PLC", "K3K", "VPLC", \
+    "d_PLC", "V_3K", "V_5K", "K_PLC", "K3K", "V_PLC", \
     "h0", "K_tau", "tau_max", \
     "g0", "K_hRyR", "tau"}; // NOTE: these must match up with the enums in global_defs.hpp !!!
 
@@ -49,7 +49,7 @@ void utils::get_parameters(const std::string file_id, tCalcs* p, std::ofstream& 
 	bool found = false;
     for(int n = 0; n < PCOUNT; n++) {
       if(tokens[0] == pnames[n]) {
-        p[n] = atof(tokens[1].c_str());
+        p[n] = atof(tokens[cell_num].c_str());
 		found = true; break;
       }
     }

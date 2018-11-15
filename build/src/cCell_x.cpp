@@ -48,7 +48,7 @@ cCell_x::cCell_x(std::string host_name, int my_rank, int a_rank) {
   cells.push_back({other_cell, face_count}); // one more time
   out << std::endl;
 
-  utils::get_parameters(id, p, out);
+  utils::get_parameters(acinus_id, cell_number, p, out);
   make_matrices();  // create the constant matrices
   init_solvec(); // initialise solution buffer
   solver = new cVCLSolver(this);
@@ -141,8 +141,8 @@ void cCell_x::make_matrices(){
 
     // RyR and PLC spatial factors per element
     element_data(n, RYR_e) = 
-      p[w_RYR] * ((mesh->dfa[n] < p[d_RyR]) ? (1.0 - ((p[d_RyR] - mesh->dfa[n]) / p[d_RyR])) : 1.0);
-    element_data(n, PLC_e) = (mesh->dfb[n] < p[d_PLC]) ? p[w_PLC] : 0.0;
+      ((mesh->dfa[n] < p[d_RyR]) ? (1.0 - ((p[d_RyR] - mesh->dfa[n]) / p[d_RyR])) : 1.0);
+    element_data(n, PLC_e) = (mesh->dfb[n] < p[d_PLC]) ? 1.0 : 0.0;
 
     tCalcs Ic = V * p[Dc]; // diffusion coefficients
     tCalcs Ip = V * p[Dp];
@@ -290,7 +290,7 @@ Array1VC cCell_x::get_body_reactions(tCalcs c, tCalcs ip, tCalcs ce, tCalcs g, t
   tCalcs J_RYR   = ryr_f * p[V_RyR] * 
                    ( pow(c, p[n_RyR]) / (pow(c, p[n_RyR]) + pow(p[K_RyR], p[n_RyR]))) *
                    ( pow(ce, p[m_RyR]) / (pow(ce, p[m_RyR]) + pow(p[K_RyR2], p[m_RyR]))) * g;
-  tCalcs vplc   = plc_f * pow(c, 2) / (pow(p[K_PLC], 2) + pow(c, 2));
+  tCalcs vplc   = plc_f * p[V_PLC] * pow(c, 2) / (pow(p[K_PLC], 2) + pow(c, 2));
   tCalcs vdeg   = (p[V_5K] + (p[V_3K] * pow(c, 2))/(pow(p[K3K], 2) + pow(c, 2))) * ip;
 
   Array1VC reactions;
@@ -333,7 +333,6 @@ MatrixX1C cCell_x::make_load(tCalcs dt, bool plc){
 
     Array1VC reactions = get_body_reactions(cav, ipav, ceav, gav,
         tCalcs(element_data(n, RYR_e)), tCalcs(plc ? element_data(n, PLC_e) : 0.0));
-        //tCalcs(element_data(n, RYR_e)), tCalcs(element_data(n, PLC_e)));
 
     for(int i = 0; i < 4; i++){ // for each tetrahedron vertex
       load_c(vi(i)) += element_data(n, VOL_e) * 0.25 * reactions(0); // reaction terms, scaled by 1/4 volume
@@ -406,7 +405,6 @@ void cCell_x::run() {
 
   MatrixX1C rhs; // the right-hand-side vector
   rhs.resize(DIFVARS * np, Eigen::NoChange);
-  //tCalcs plc = p[VPLC];
   bool plc;
 
   int step = 0;
@@ -427,7 +425,6 @@ void cCell_x::run() {
     out << std::fixed << std::setprecision(3);
     out << "<Cell_x> step: " << step << " current_time: " << current_time;
     out << " delta_time: " << delta_time << std::endl;
-    //p[VPLC] = ((current_time < p[PLCsrt]) or (current_time > p[PLCfin])) ? 0.0 : plc; // PLC on or off?
     plc = ((current_time >= p[PLCsrt]) and (current_time <= p[PLCfin])); // PLC on or off?
 
     if(delta_time != prev_delta_time) { // recalculate A matrix if time step changed

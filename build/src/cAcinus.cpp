@@ -22,7 +22,7 @@ cAcinus::cAcinus(std::string host_name, int rank, int c_rank, int c_count) {
   out << "<Acinus> id: " << id << std::endl;
   out << "<Acinus> host_name: " << host_name << std::endl;
 
-  utils::get_parameters(id, p, out);
+  utils::get_parameters(id, 1, p, out);
   time_file.open(id + "_time.bin", std::ios::binary);
 }
 

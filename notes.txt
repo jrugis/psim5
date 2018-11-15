@@ -26,7 +26,8 @@ copy/edit parms_xxxx.dat
      edit run_sim.py
      edit run.sl
 
-python run_sim.py
+python run_sim.py parms_xxxx.dat
+squeue -u UPI
 
 cd psim5/run/results/XXXX/XXXX
 summary_plot.pdf

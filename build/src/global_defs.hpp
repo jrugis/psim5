@@ -71,10 +71,10 @@ enum model_parameters{ \
   PLCsrt, PLCfin, \
   c0, ip0, ce0, Gamma, \
   Dc, Dp, De, Fc, Fip, \
-  d_RyR, w_RYR, V_RyR, K_RyR, K_RyR2, m_RyR, n_RyR, \
+  d_RyR, V_RyR, K_RyR, K_RyR2, m_RyR, n_RyR, \
   k_beta, K_p, K_c, K_h, kIPR, \
   V_p, k_p, K_bar, \
-  d_PLC, w_PLC, V_3K, V_5K, K_PLC, K3K, VPLC, \
+  d_PLC, V_3K, V_5K, K_PLC, K3K, V_PLC, \
   h0, K_tau, tau_max, \
   g0, K_hRyR, tau, \
   PCOUNT};
