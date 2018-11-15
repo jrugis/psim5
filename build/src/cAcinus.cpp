@@ -5,6 +5,8 @@
  *      Author: jrugis
  */
 
+#include <time.h>
+#include <iomanip>
 #include <iostream>
 #include <string>
 
@@ -54,15 +56,23 @@ void cAcinus::run() {
   tCalcs solver_dt = p[delT];
   tCalcs prev_dt = solver_dt;
   tCalcs error;
+  struct timespec start, end;
+  double elapsed;
 
   // simulation time stepping and synchronization
-  while(t < p[totalT]) {
+  clock_gettime(CLOCK_REALTIME, &start);
+  while((p[totalT] - t) > 0.000001 ) {  // HARD CODED: assumes solver_dt always > 1us
     float f = t; // convert to float for reduced file size
     time_file.write(reinterpret_cast<char*>(&f), sizeof(float));
     error = snd_recv(t, solver_dt);
     if(error != 0.0) { // change time step?
       // ...
     }
+    clock_gettime(CLOCK_REALTIME, &end);
+	elapsed = (end.tv_sec - start.tv_sec) + ((end.tv_nsec - start.tv_nsec) / 1000000000.0);
+	out << std::fixed << std::setprecision(3);
+	out << "<Acinus> step duration: " << elapsed << "s"<< std::endl;
+    start = end;
     t += solver_dt;
   }  
 

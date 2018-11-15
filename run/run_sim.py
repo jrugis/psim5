@@ -37,7 +37,7 @@ os.chdir(path)
 # copy some files into results directory
 os.system("cp " + csdir + "/psim5 .")
 os.system("chmod 770 psim5")
-os.system("cp " + csdir + "/run.sl .")
+os.system("cp " + csdir + "/my_run.sl ./run.sl")
 os.system("cp " + csdir + "/summary_plot.py .")
 os.system("cp " + csdir + "/" + parms + " a1.dat")
 for cell in range(1, 8):

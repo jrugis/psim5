@@ -70,7 +70,8 @@ void cVCLSolver::step(MatrixX1C &solvec, MatrixX1C &rhsvec){
 
   viennacl::copy(vcl_sol, solvec); // vcl -> eigen
  
+  parent->out << "<VCLSolver> iterations: " << my_gmres_tag.iters();
   parent->out << std::fixed << std::setprecision(8);
-  parent->out << "<VCLSolver> " << my_gmres_tag.iters() << " " << my_gmres_tag.error() << std::endl;
+  parent->out << " relative error: " << my_gmres_tag.error() << std::endl;
 }
 

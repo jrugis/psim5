@@ -6,7 +6,7 @@
  */
 
 #include <iostream>
-#include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 #include <mpi.h>
 
@@ -26,7 +26,7 @@
 int main(int argc,char **args){
   int commSize, commRank;
   std::string host_name;
-  struct timeval start, end;
+  struct timespec start, end;
   int duration;
 
   // initialize mpi
@@ -35,7 +35,7 @@ int main(int argc,char **args){
   MPI_CHECK(MPI_Comm_rank(MPI_COMM_WORLD, &commRank));
   if(commSize != MPI_NODES) mpi_abort(MPI_NODES_ABORT); // check mpiexec node count
 
-  gettimeofday(&start, NULL); // get the time
+  clock_gettime(CLOCK_REALTIME, &start);
 
   // get the hostname
   char temp[TEMP_SIZE];
@@ -58,9 +58,9 @@ int main(int argc,char **args){
   }
   //*********************************************************************************
 
-  gettimeofday(&end, NULL);
+  clock_gettime(CLOCK_REALTIME, &end);
   duration = end.tv_sec - start.tv_sec;
-  std::cout << "<main> rank " << commRank << " execution time: " << duration << " sec" << std::endl;
+  std::cout << "<main> rank " << commRank << " execution time: " << duration << "s" << std::endl;
 
   // shutdown mpi
   MPI_CHECK(MPI_Finalize());

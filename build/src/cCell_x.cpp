@@ -12,6 +12,7 @@
 #include <fstream>
 #include <cmath>
 #include <sys/stat.h>
+#include <time.h>
 #include <vector>
 
 #include "global_defs.hpp"
@@ -401,6 +402,8 @@ void cCell_x::run() {
   tCalcs delta_time, current_time;
   tCalcs prev_delta_time = 0.0;
   MPI_Status stat;
+  struct timespec start, end;
+  double elapsed;
   int np = mesh->vertices_count;
 
   MatrixX1C rhs; // the right-hand-side vector
@@ -423,8 +426,8 @@ void cCell_x::run() {
 
     // not done
     out << std::fixed << std::setprecision(3);
-    out << "<Cell_x> step: " << step << " current_time: " << current_time;
-    out << " delta_time: " << delta_time << std::endl;
+    out << "<Cell_x> step: " << step << " current_time: " << current_time << "s";
+    out << " delta_time: " << delta_time << "s" << std::endl;
     plc = ((current_time >= p[PLCsrt]) and (current_time <= p[PLCfin])); // PLC on or off?
 
     if(delta_time != prev_delta_time) { // recalculate A matrix if time step changed
@@ -440,11 +443,17 @@ void cCell_x::run() {
     solvec = make_load(delta_time, plc); // gets the load and the non-diffusing solutions
     rhs = (sparseMass * prev_solvec.block(0, 0, DIFVARS * np, 1))+ (delta_time * solvec.block(0, 0, DIFVARS * np, 1));
 
+
+    clock_gettime(CLOCK_REALTIME, &start);
     solver->step(solvec, rhs);                           // VCL solver 
     //solvec = sparseA.llt().solve(rhs);                   // Eigen solver
     //solvec = sparseA.ldlt().solve(rhs);                  // Eigen solver
     //solvec = sparseA.partialPivLu().solve(rhs);          // Eigen solver 
     //solvec = sparseA.fullPivHouseholderQr().solve(rhs);  // Eigen solver
+    clock_gettime(CLOCK_REALTIME, &end);
+	elapsed = (end.tv_sec - start.tv_sec) + ((end.tv_nsec - start.tv_nsec) / 1000000000.0);
+	out << std::fixed << std::setprecision(3);
+	out << "<Cell_x> solver duration: " << elapsed << "s"<< std::endl;
 
     // check error and send it to acinus
     // ...
