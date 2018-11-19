@@ -21,7 +21,7 @@ public:
 
 private:
   std::string id;
-  std::ofstream out, time_file;
+  std::ofstream out;
   tCalcs p[PCOUNT]; // the model parameters array
   int my_rank, cell_rank, cell_count;
 

@@ -33,7 +33,7 @@ cp run.sl my_run.sl
 edit my_parms_xxxx.dat
 edit my_run.sl
 
-python run_sim.py my_parms_xxxx.dat
+python run_sim.py my_run.sl my_parms_xxxx.dat
 squeue -u UPI
 
 cd psim5/run/results/XXXX/XXXX

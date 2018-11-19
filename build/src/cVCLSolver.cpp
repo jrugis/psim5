@@ -69,8 +69,8 @@ void cVCLSolver::step(MatrixX1C &solvec, MatrixX1C &rhsvec){
   //parent->out << "<VCLSolver> iterations: " << my_gmres_tag.iters();
   //parent->out << std::fixed << std::setprecision(8);
   //parent->out << " relative error: " << my_gmres_tag.error() << std::endl;
-  parent->out << "<VCLSolver> iterations: " << my_tag->iters();
-  parent->out << std::fixed << std::setprecision(8);
-  parent->out << " relative error: " << my_tag->error() << std::endl;
+  //parent->out << "<VCLSolver> iterations: " << my_tag->iters();
+  //parent->out << std::fixed << std::setprecision(8);
+  //parent->out << " relative error: " << my_tag->error() << std::endl;
 }
 

@@ -25,11 +25,9 @@ cAcinus::cAcinus(std::string host_name, int rank, int c_rank, int c_count) {
   out << "<Acinus> host_name: " << host_name << std::endl;
 
   utils::get_parameters(id, 1, p, out);
-  time_file.open(id + "_time.bin", std::ios::binary);
 }
 
 cAcinus::~cAcinus() {
-  time_file.close();
   out.close();
 }
 
@@ -63,7 +61,6 @@ void cAcinus::run() {
   clock_gettime(CLOCK_REALTIME, &start);
   while((p[totalT] - t) > 0.000001 ) {  // HARD CODED: assumes solver_dt always > 1us
     float f = t; // convert to float for reduced file size
-    time_file.write(reinterpret_cast<char*>(&f), sizeof(float));
     error = snd_recv(t, solver_dt);
     if(error != 0.0) { // change time step?
       // ...

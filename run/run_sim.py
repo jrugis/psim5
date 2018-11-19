@@ -8,13 +8,17 @@ import sys
 # main program
 ##################################################################
 
-if(len(sys.argv) < 2):
+if(len(sys.argv) < 3):
   print("error: missing argument(s)")
-  print("usage: python run_sim.py <parameter-file-name>")
+  print("usage: python run_sim.py <slurm-file-name> <parameter-file-name>")
   quit()
 
 csdir = os.getcwd()
-parms = sys.argv[1]
+slurm = sys.argv[1]
+if not os.path.exists(csdir + "/" + slurm):
+  print("no such slurm file: " + slurm)
+  quit()
+parms = sys.argv[2]
 if not os.path.exists(csdir + "/" + parms):
   print("no such parameter file: " + parms)
   quit()
@@ -37,7 +41,7 @@ os.chdir(path)
 # copy some files into results directory
 os.system("cp " + csdir + "/psim5 .")
 os.system("chmod 770 psim5")
-os.system("cp " + csdir + "/my_run.sl ./run.sl")
+os.system("cp " + csdir + "/" + slurm + " ./run.sl")
 os.system("cp " + csdir + "/summary_plot.py .")
 os.system("cp " + csdir + "/" + parms + " a1.dat")
 for cell in range(1, 8):
