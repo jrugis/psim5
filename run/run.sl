@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=psim5           # job name (shows up in the queue)
 #SBATCH --account=nesi00119        # Project Account
-#SBATCH --time=00:10:00            # Walltime (HH:MM:SS)
+#SBATCH --time=02:00:00            # Walltime (HH:MM:SS)
 #SBATCH --mem-per-cpu=2000         # memory/cpu (in MB) Should be half?
 ##SBATCH --partition=prepost        # 3 hours, 4 cores,    15GB
 ##SBATCH --partition=large          # 3 days,  1024 cores, 3GB

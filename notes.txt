@@ -4,7 +4,7 @@ cd /nesi/project/nesi00119/your_name
 git clone https://github.com/jrugis/psim5.git
 
 git pull
-
+OR
 git fetch origin
 git reset --hard origin/master
 
