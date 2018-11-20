@@ -2,10 +2,10 @@
 #SBATCH --job-name=psim5           # job name (shows up in the queue)
 #SBATCH --account=nesi00119        # Project Account
 #SBATCH --time=02:00:00            # Walltime (HH:MM:SS)
-#SBATCH --mem-per-cpu=2000         # memory/cpu (in MB) Should be half?
+#SBATCH --mem-per-cpu=2000         # memory/cpu (in MB, set to half of what's actually required)
 ##SBATCH --partition=prepost        # 3 hours, 4 cores,    15GB
-##SBATCH --partition=large          # 3 days,  1024 cores, 3GB
-#SBATCH --partition=bigmem         # 3 days,  72 cores,   15GB
+#SBATCH --partition=large          # 3 days,  1024 cores, 3GB
+##SBATCH --partition=bigmem         # 3 days,  72 cores,   15GB
 #SBATCH --hint=nomultithread       # don't use hyperthreading
 #SBATCH --ntasks=8                 # number of tasks (e.g. MPI)
 ##SBATCH --ntasks-per-node=8

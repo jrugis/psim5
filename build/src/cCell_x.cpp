@@ -442,8 +442,6 @@ void cCell_x::run() {
     // calculate solution
     solvec = make_load(delta_time, plc); // gets the load and the non-diffusing solutions
     rhs = (sparseMass * prev_solvec.block(0, 0, DIFVARS * np, 1))+ (delta_time * solvec.block(0, 0, DIFVARS * np, 1));
-
-
     clock_gettime(CLOCK_REALTIME, &start);
     solver->step(solvec, rhs);                           // VCL solver 
     //solvec = sparseA.llt().solve(rhs);                   // Eigen solver
@@ -454,6 +452,9 @@ void cCell_x::run() {
 	elapsed = (end.tv_sec - start.tv_sec) + ((end.tv_nsec - start.tv_nsec) / 1000000000.0);
 	out << std::fixed << std::setprecision(3);
 	out << "<Cell_x> solver duration: " << elapsed << "s"<< std::endl;
+
+    // clamp ip3 to non-negative?
+	//for(int n = 0; n < np; n++) if(solvec[np + n] < 0.0) solvec[np + n] = 0.0;
 
     // check error and send it to acinus
     // ...

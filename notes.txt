@@ -31,10 +31,13 @@ cp parms_default.dat my_parms_xxxx.dat
 cp run_default.sl my_run_xxxx.sl
  
 edit my_parms_xxxx.dat
-edit my_run.sl
+edit my_run_xxxx.sl
 
 python run_sim.py my_run_xxxx.sl my_parms_xxxx.dat
 squeue -u UPI
 
-cd psim5/run/results/XXXX/XXXX
+
+Results
+-------
+cd /nesi/nobackup/nesi00119/your_name/psim5/run/results/XXXX/XXXX
 summary_plot.pdf
