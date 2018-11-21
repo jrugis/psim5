@@ -18,7 +18,7 @@
 #include "global_defs.hpp"
 #include "utils.hpp"
 #include "cCellMesh.hpp"
-#include "cVCLSolver.hpp"
+////#include "cVCLSolver.hpp"
 #include "cCell_x.hpp"
 
 cCell_x::cCell_x(std::string host_name, int my_rank, int a_rank) {
@@ -52,7 +52,8 @@ cCell_x::cCell_x(std::string host_name, int my_rank, int a_rank) {
   utils::get_parameters(acinus_id, cell_number, p, out);
   make_matrices();  // create the constant matrices
   init_solvec(); // initialise solution buffer
-  solver = new cVCLSolver(this);
+  ////solver = new cVCLSolver(this);
+  solver = new Eigen::SimplicialLDLT<Eigen::SparseMatrix<tCalcs>>;
   ca_file.open(id + "_ca.bin", std::ios::binary);
   ip3_file.open(id + "_ip3.bin", std::ios::binary);
   cer_file.open(id + "_cer.bin", std::ios::binary);
@@ -71,19 +72,23 @@ void cCell_x::init_solvec(){
   out << "<Cell_x> initialising solution vector..." << std::endl;
   int np = mesh->vertices_count;
 
-  solvec.resize(VARIABLES * np, 1); // NOTE: the variables ordering is c, ip, ce, g, h
-  prev_solvec.resize(VARIABLES * np, 1);
+  solvec.resize(DIFVARS * np, 1); // NOTE: the variable ordering is c, ip, ce
+  prev_solvec.resize(DIFVARS * np, 1);
   prev_solvec.block(0, 0, np, 1) = MatrixX1C().Constant(np, 1, p[c0]);
   prev_solvec.block(np, 0, np, 1) = MatrixX1C().Constant(np, 1, p[ip0]);
   prev_solvec.block(2 * np, 0, np, 1) = MatrixX1C().Constant(np, 1, p[ce0]);
-  prev_solvec.block(3 * np, 0, np, 1) = MatrixX1C().Constant(np, 1, p[g0]);
-  prev_solvec.block(4 * np, 0, np, 1) = MatrixX1C().Constant(np, 1, 0.0); // default to 0.0
+  solvec = prev_solvec;
+
+  nd_solvec.resize(NONDIFVARS * np, 1); // NOTE: the variable ordering is g, h
+  prev_nd_solvec.resize(NONDIFVARS * np, 1);
+  prev_nd_solvec.block(0, 0, np, 1) = MatrixX1C().Constant(np, 1, p[g0]);
+  prev_nd_solvec.block(np, 0, np, 1) = MatrixX1C().Constant(np, 1, 0.0); // default to 0.0
   for(int n = 0; n < np; n++){
     if(node_data(n, BOOL_apical) == 1.0){  // apical nodes only
-      prev_solvec((4 * np) + n) = p[h0];
+      prev_nd_solvec(np + n) = p[h0];
     }
   }
-  solvec = prev_solvec;
+  nd_solvec = prev_nd_solvec;
 }
 
 ArrayRefMass cCell_x::make_ref_mass(){
@@ -302,7 +307,6 @@ Array1VC cCell_x::get_body_reactions(tCalcs c, tCalcs ip, tCalcs ce, tCalcs g, t
   return reactions;
 }
 
-//MatrixX1C cCell_x::make_load(tCalcs dt){
 MatrixX1C cCell_x::make_load(tCalcs dt, bool plc){
   int np = mesh->vertices_count;
   ArrayX1C c, ip, g, h;
@@ -314,13 +318,13 @@ MatrixX1C cCell_x::make_load(tCalcs dt, bool plc){
   c = prev_solvec.block(0, 0, np, 1);
   ip = prev_solvec.block(np, 0, np, 1);
   ce = prev_solvec.block(2 * np, 0, np, 1);
-  g = prev_solvec.block(3 * np, 0, np, 1);
-  h = prev_solvec.block(4 * np, 0, np, 1); // note: only apical (surface) nodes used
+  g = prev_nd_solvec.block(0, 0, np, 1);
+  h = prev_nd_solvec.block(np, 0, np, 1); // note: only apical (surface) nodes used
 
   load_c = load_c.Zero(np, 1);
   load_ip = load_ip.Zero(np, 1);
   load_ce = load_ce.Zero(np, 1);
-  load.resize(VARIABLES * np, Eigen::NoChange);
+  load.resize(DIFVARS * np, Eigen::NoChange);
 
   // volume reaction terms
   for(int n = 0; n < (mesh->tetrahedrons_count); n++){ // for each volume element...
@@ -364,15 +368,26 @@ MatrixX1C cCell_x::make_load(tCalcs dt, bool plc){
   load.block(np, 0, np, 1) = load_ip;
   load.block(2 * np, 0, np, 1) = load_ce;
 
-  // the non-diffusing variables
+  return load;
+}
+
+MatrixX1C cCell_x::solve_nd(tCalcs dt){ // the non-diffusing variables
+  int np = mesh->vertices_count;
+  ArrayX1C c, g, h;
+  MatrixX1C svec;
+
+  c = prev_solvec.block(0, 0, np, 1);
+  g = prev_nd_solvec.block(0, 0, np, 1);
+  h = prev_nd_solvec.block(np, 0, np, 1); // note: only apical (surface) nodes used
+  svec.resize(NONDIFVARS * np, Eigen::NoChange);
+
   for(int n = 0; n < np; n++){ // for each node...
-    load((3 * np) + n) = load((3 * np) + n) + (dt * get_g_reaction(c(n), g(n))); // g
-    if(node_data(n, BOOL_apical) == 1.0){
-      load((4 * np) + n) = load((4 * np) + n) + (dt * get_h_reaction(c(n), h(n))); // h
+    svec(n) = svec(n) + (dt * get_g_reaction(c(n), g(n))); // g
+    if(node_data(n, BOOL_apical) == 1.0){ // only the apical nodes
+      svec(np + n) = svec(np + n) + (dt * get_h_reaction(c(n), h(n))); // h
     }
   }
-
-  return load;
+  return svec;
 }
 
 void cCell_x::exchange() {
@@ -413,7 +428,8 @@ void cCell_x::run() {
   int step = 0;
   while(true) {
     step++;
-    prev_solvec = solvec;
+    prev_solvec = solvec;       // c, ip, ce
+	prev_nd_solvec = nd_solvec; // g, h
 
     // get current time and time step value from acinus
     MPI_CHECK(MPI_Recv(&msg, ACCOUNT, MPI_FLOAT, acinus_rank, ACINUS_CELL_TAG, MPI_COMM_WORLD, &stat));
@@ -432,36 +448,39 @@ void cCell_x::run() {
 
     if(delta_time != prev_delta_time) { // recalculate A matrix if time step changed
       sparseA = sparseMass + (delta_time * sparseStiff);
-      solver->setA(sparseA);
+      ////solver->setA(sparseA);
+	  solver->compute(sparseA);
+      if(solver->info() != Eigen::Success) { // decomposition failed?
+        utils::fatal_error("matrix decomposition failed", out);
+      }
       prev_delta_time = delta_time;
     }
 
     // exchange common face data
     exchange();
 
-    // calculate solution
-    solvec = make_load(delta_time, plc); // gets the load and the non-diffusing solutions
-    rhs = (sparseMass * prev_solvec.block(0, 0, DIFVARS * np, 1))+ (delta_time * solvec.block(0, 0, DIFVARS * np, 1));
+    // calculate solution for diffusing variables
+    rhs = (sparseMass * prev_solvec) + (delta_time * make_load(delta_time, plc));
     clock_gettime(CLOCK_REALTIME, &start);
-    solver->step(solvec, rhs);                           // VCL solver 
-    //solvec = sparseA.llt().solve(rhs);                   // Eigen solver
-    //solvec = sparseA.ldlt().solve(rhs);                  // Eigen solver
-    //solvec = sparseA.partialPivLu().solve(rhs);          // Eigen solver 
-    //solvec = sparseA.fullPivHouseholderQr().solve(rhs);  // Eigen solver
+    //solver->step(solvec, rhs);                   // VCL solver 
+    solvec = solver->solve(rhs);                   // Eigen solver
+    if(solver->info() != Eigen::Success) {
+      utils::fatal_error("solver failed", out);;
+	}
     clock_gettime(CLOCK_REALTIME, &end);
 	elapsed = (end.tv_sec - start.tv_sec) + ((end.tv_nsec - start.tv_nsec) / 1000000000.0);
 	out << std::fixed << std::setprecision(3);
 	out << "<Cell_x> solver duration: " << elapsed << "s"<< std::endl;
 
-    // clamp ip3 to non-negative?
-	//for(int n = 0; n < np; n++) if(solvec[np + n] < 0.0) solvec[np + n] = 0.0;
-
-    // check error and send it to acinus
+    // check solver error and send it to acinus
     // ...
     msg[sError] = 0.0;
     MPI_CHECK(MPI_Send(&msg, ACCOUNT, MPI_FLOAT, acinus_rank, ACINUS_CELL_TAG, MPI_COMM_WORLD));
 
-    // save result
+    // calculate solution for non-diffusing variables
+    nd_solvec = solve_nd(delta_time);
+
+    // save results
     if(step % int(p[Tstride]) == 0) {
       save_results(ca_file, 0);   // 0 = calcium
       save_results(ip3_file, 1);  // 1 = ip3
@@ -473,7 +492,7 @@ void cCell_x::run() {
 void cCell_x::save_results(std::ofstream &data_file, int var){
   int np = mesh->vertices_count;
   float* fbuf = new float[np];
-  for(int n=0; n<np; n++) fbuf[n] = prev_solvec[var*np + n]; // convert to float for reduced file size
+  for(int n=0; n<np; n++) fbuf[n] = solvec[var*np + n]; // convert to float for reduced file size
   data_file.write(reinterpret_cast<char*>(fbuf), np * sizeof(float));
 }
 

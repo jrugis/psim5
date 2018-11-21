@@ -12,9 +12,10 @@
 #include <string>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+#include<Eigen/SparseCholesky>
 
 class cCellMesh;
-class cVCLSolver;
+////class cVCLSolver;
 
 #include "global_defs.hpp"
 
@@ -37,7 +38,7 @@ struct cfc {int cell; int fcount;}; // other cell, connected face count
 
 class cCell_x {
 friend class cCellMesh;
-friend class cVCLSolver;
+////friend class cVCLSolver;
 public:
   cCell_x(std::string host_name, int my_rank, int acinus_rank);
   ~cCell_x();
@@ -49,8 +50,8 @@ private:
   std::ofstream out, ca_file, ip3_file, cer_file;
   int cell_number, acinus_rank;
   cCellMesh* mesh;
-  cVCLSolver* solver;
-
+  ////cVCLSolver* solver;
+  Eigen::SimplicialLDLT<Eigen::SparseMatrix<tCalcs>> *solver;
   tCalcs p[PCOUNT]; // the model parameters array
   std::vector<cfc> cells; // vector of connected cells and face counts
 
@@ -58,7 +59,7 @@ private:
   Eigen::Array<tCalcs, Eigen::Dynamic, MODELSCOUNT> surface_data;
   Eigen::Array<tCalcs, Eigen::Dynamic, MODELNCOUNT> node_data;
 
-  MatrixX1C solvec, prev_solvec; // solution vector
+  MatrixX1C solvec, nd_solvec, prev_solvec, prev_nd_solvec; // solution vectors (for diffusing and non-diffusing)
   SparseMatrixTCalcs sparseA, sparseStiff, sparseMass; // A, stiffness and mass matrices
 
   void init_solvec();
@@ -66,6 +67,7 @@ private:
   void exchange();
   void save_results(std::ofstream &data_file, int var);
 
+  MatrixX1C solve_nd(tCalcs delta_time);
   MatrixX1C make_load(tCalcs delta_time, bool plc);
   ArrayRefMass make_ref_mass();
   Array1VC get_body_reactions(tCalcs c, tCalcs ip, tCalcs ce, tCalcs g, tCalcs ryr_f, tCalcs plc_f);

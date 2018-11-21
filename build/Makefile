@@ -26,7 +26,8 @@ CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -march=native -mtune=native
 CPP_INCLUDES = -I/usr/include -I./src/ViennaCL-1.7.1
 
 EXE = ../run/psim5
-OBJS = main.o utils.o cAcinus.o cCell_x.o cVCLSolver.o cCellMesh.o
+#OBJS = main.o utils.o cAcinus.o cCell_x.o cVCLSolver.o cCellMesh.o
+OBJS = main.o utils.o cAcinus.o cCell_x.o cCellMesh.o
 SRC = ./src
 
 all: $(EXE)
@@ -43,8 +44,8 @@ cAcinus.o: $(SRC)/cAcinus.cpp $(SRC)/cAcinus.hpp
 cCell_x.o: $(SRC)/cCell_x.cpp $(SRC)/cCell_x.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
-cVCLSolver.o: $(SRC)/cVCLSolver.cpp $(SRC)/cVCLSolver.hpp
-	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
+#cVCLSolver.o: $(SRC)/cVCLSolver.cpp $(SRC)/cVCLSolver.hpp
+#	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
 cCellMesh.o: $(SRC)/cCellMesh.cpp $(SRC)/cCellMesh.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
