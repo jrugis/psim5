@@ -382,9 +382,9 @@ MatrixX1C cCell_x::solve_nd(tCalcs dt){ // the non-diffusing variables
   svec.resize(NONDIFVARS * np, Eigen::NoChange);
 
   for(int n = 0; n < np; n++){ // for each node...
-    svec(n) = svec(n) + (dt * get_g_reaction(c(n), g(n))); // g
+    svec(n) = g(n) + (dt * get_g_reaction(c(n), g(n))); // g
     if(node_data(n, BOOL_apical) == 1.0){ // only the apical nodes
-      svec(np + n) = svec(np + n) + (dt * get_h_reaction(c(n), h(n))); // h
+      svec(np + n) = h(n) + (dt * get_h_reaction(c(n), h(n))); // h
     }
   }
   return svec;
