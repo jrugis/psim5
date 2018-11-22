@@ -8,6 +8,7 @@
 #include <boost/tokenizer.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include "global_defs.hpp"
 #include "utils.hpp"
@@ -45,11 +46,14 @@ void utils::get_parameters(const std::string file_id, int cell_num, tCalcs* p, s
   for(int n = 0; n < PCOUNT; n++) p[n] = tCalcs(-1.0);  // not-hit marker
   while(getline(model_file, line)){
     if(line.data()[0] == '#') continue;
+    int ci = line.find_first_of("#");     // remove comment, if any
+	if(ci > 0) line = line.substr(0, ci); //
+	line = boost::trim_right_copy(line);  // remove trailing whitespace
     boost::split(tokens, line, boost::is_any_of(" "), boost::token_compress_on);
 	bool found = false;
     for(int n = 0; n < PCOUNT; n++) {
       if(tokens[0] == pnames[n]) {
-        p[n] = atof(tokens[cell_num].c_str());
+        p[n] = atof(tokens[ ((tokens.size() == 2) ? 1 : cell_num) ].c_str());
 		found = true; break;
       }
     }

@@ -51,7 +51,7 @@ private:
   int cell_number, acinus_rank;
   cCellMesh* mesh;
   ////cVCLSolver* solver;
-  Eigen::SimplicialLDLT<Eigen::SparseMatrix<tCalcs>> *solver;
+  Eigen::SimplicialLDLT<Eigen::SparseMatrix<tCalcs>> solver;
   tCalcs p[PCOUNT]; // the model parameters array
   std::vector<cfc> cells; // vector of connected cells and face counts
 

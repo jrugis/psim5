@@ -53,7 +53,7 @@ cCell_x::cCell_x(std::string host_name, int my_rank, int a_rank) {
   make_matrices();  // create the constant matrices
   init_solvec(); // initialise solution buffer
   ////solver = new cVCLSolver(this);
-  solver = new Eigen::SimplicialLDLT<Eigen::SparseMatrix<tCalcs>>;
+  //solver = new Eigen::SimplicialLDLT<Eigen::SparseMatrix<tCalcs>>;
   ca_file.open(id + "_ca.bin", std::ios::binary);
   ip3_file.open(id + "_ip3.bin", std::ios::binary);
   cer_file.open(id + "_cer.bin", std::ios::binary);
@@ -64,7 +64,7 @@ cCell_x::~cCell_x() {
   ip3_file.close();
   cer_file.close();
   out.close();
-  delete solver;
+  //delete solver;
   delete mesh;
 }
 
@@ -449,8 +449,8 @@ void cCell_x::run() {
     if(delta_time != prev_delta_time) { // recalculate A matrix if time step changed
       sparseA = sparseMass + (delta_time * sparseStiff);
       ////solver->setA(sparseA);
-	  solver->compute(sparseA);
-      if(solver->info() != Eigen::Success) { // decomposition failed?
+	  solver.compute(sparseA);
+      if(solver.info() != Eigen::Success) { // decomposition failed?
         utils::fatal_error("matrix decomposition failed", out);
       }
       prev_delta_time = delta_time;
@@ -463,8 +463,8 @@ void cCell_x::run() {
     rhs = (sparseMass * prev_solvec) + (delta_time * make_load(delta_time, plc));
     clock_gettime(CLOCK_REALTIME, &start);
     //solver->step(solvec, rhs);                   // VCL solver 
-    solvec = solver->solve(rhs);                   // Eigen solver
-    if(solver->info() != Eigen::Success) {
+    solvec = solver.solve(rhs);                   // Eigen solver
+    if(solver.info() != Eigen::Success) {
       utils::fatal_error("solver failed", out);;
 	}
     clock_gettime(CLOCK_REALTIME, &end);

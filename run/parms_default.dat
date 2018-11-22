@@ -5,16 +5,16 @@
 # simulation time step(sec), 
 # total simulation time(sec),
 # storage stride
-#       1     2     3     4     5     6     7
-delT    0.01  0.01  0.01  0.01  0.01  0.01  0.01
-totalT  0.1   0.1   0.1   0.1   0.1   0.1   0.1   
-Tstride 1     1     1     1     1     1     1     
+# 
+delT    0.01
+totalT  0.1
+Tstride 1
 #----------------------------------------------------
 #
 # PLC start time(sec), PLC finish time(sec)
-#       1    2    3    4    5    6    7
-PLCsrt  1.0  1.0  1.0  1.0  1.0  1.0  1.0
-PLCfin  1.0  1.0  1.0  1.0  1.0  1.0  1.0
+#       1      2      3      4      5      6      7
+PLCsrt  1000.0 1000.0 1000.0 1000.0 1000.0 1000.0 1000.0
+PLCfin  1000.0 1000.0 1000.0 1000.0 1000.0 1000.0 1000.0
 #----------------------------------------------------
 #
 # initial concentrations
