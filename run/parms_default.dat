@@ -1,5 +1,13 @@
 #----------------------------------------------------
 #----------------------------------------------------
+# NOTES
+#  - comment lines begin with '#'
+#  - parameter names are case sensitive
+#  - whitespace with spaces ONLY (not tabs)
+#  - there must be exactly either ONE or SEVEN parameter 
+#     values in every parameter line 
+#  - parameter lines may have a trailing comment
+#----------------------------------------------------#
 #----------------------------------------------------
 #
 # simulation time step(sec), 
