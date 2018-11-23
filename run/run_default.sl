@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 #SBATCH --job-name=psim5           # job name (shows up in the queue)
 #SBATCH --account=nesi00119        # Project Account
 #SBATCH --time=01:00:00            # Walltime (HH:MM:SS)

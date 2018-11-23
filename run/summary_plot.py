@@ -28,28 +28,33 @@ def get_data(fname, rows, cols):
   f1.close()
   return data
 
-# get simulation time data
-# NOTE: adjusted for possible time step stride
-def get_sim_time(fname):
-  f1 = open(fname, "r")
-  for line in f1:
-    if "delT" in line: delt = float(line.rstrip().split()[1])
-    if "totalT" in line: totalt = float(line.rstrip().split()[1])
-    if "Tstride" in line: tstride = float(line.rstrip().split()[1])
-  f1.close()
-  steps = int(totalt / delt) 
-  ndelt = delt * tstride
-  nsteps = int(steps / tstride)
-  ntotalt = ndelt * nsteps
-  return ndelt, ntotalt, nsteps
+## get the time values associated with the saved data
+def get_time_vals(fname):
+  f = open(fname + ".dat", "r") # get the saved data stride
+  for line in f:
+    if "Tstride" in line:
+      tstride = int(line.rstrip().split()[1])
+      break
+  f.close()
+  tvals = [] # list of time values
+  n = int(0)
+  f = open(fname + ".out", "r") 
+  for line in f: 
+    if "<Acinus> t:" in line: # iterate through the saved time step values
+      if(float(line.rstrip().split()[2]) == 0.0): continue  # skip start time 0.0
+      n += 1
+      if (n % tstride) == 0:
+        tvals.append(float(line.rstrip().split()[2])) # add to list of time values
+  f.close()
+  return np.asarray(tvals) # return time values in a numpy array
 
 # get cell node count
 def get_node_count(fname):
-  f1 = open(fname, "r")
-  for line in f1:
+  f = open(fname, "r")
+  for line in f:
     if line.startswith("<CellMesh> vertices_count:"):
       v = line.rstrip().split()
-  f1.close()
+  f.close()
   return int(v[2])
 
 
@@ -64,15 +69,14 @@ plt.subplots_adjust(wspace = 0.5)
 fig.set_size_inches(ncells * 3.8, len(dtypes) * 2.5)
 fig.text(0.02, 0.96, os.getcwd(), fontsize=10)
 
-delt, totalt, tsteps = get_sim_time("a1.dat")
+x = get_time_vals("a1") # get the x-axis time values
 for cell in range(ncells):
   dname = "a1c" + str(cell + 1)
   nodes = get_node_count(dname + ".out")
   plots[len(dtypes)-1, cell].set_xlabel(" time (s)")
   plots[0, cell].set_title("Cell " + str(cell+1))
   for i, dtype in enumerate(dtypes):
-    data = get_data(dname + '_' + dtype + ".bin", nodes, tsteps)
-    x = np.linspace(delt, totalt, tsteps)
+    data = get_data(dname + '_' + dtype + ".bin", nodes, x.shape[0])
     y1 = data[0]
     y2 = data[1]
     plots[i, cell].plot(x, y1, x, y2, color='steelblue')

@@ -20,6 +20,7 @@ ml Python/2.7.14-gimkl-2017a
 Build
 -----
 cd psim5/build
+make clean
 make
 
 
