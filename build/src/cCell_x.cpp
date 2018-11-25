@@ -276,6 +276,8 @@ Array1VC cCell_x::get_apical_reactions(tCalcs c, tCalcs ip, tCalcs ce, tCalcs h)
 
   Array1VC reactions;
   reactions(0) = p[kIPR] * po * (ce - c);
+  reactions(1) = ip;
+  reactions(2) = -reactions(0) / p[Gamma];
   return reactions;
 }
 
@@ -359,7 +361,9 @@ MatrixX1C cCell_x::make_load(tCalcs dt, bool plc){
     Array1VC reactions = get_apical_reactions(cav, ipav, ceav, hav);
     for(int i = 0; i < 3; i++){ // for each apical triangle vertex
       load_c(vi(i)) += // reaction term scaled by 1/3 area
-        (surface_data(mesh->apical_triangles(n), AREA_s) / 3.0) * reactions(0); 
+        (surface_data(mesh->apical_triangles(n), AREA_s) / 3.0) * reactions(0);
+      load_ce(vi(i)) += // reaction term scaled by 1/3 area
+        (surface_data(mesh->apical_triangles(n), AREA_s) / 3.0) * reactions(2);
     }
   }
 
