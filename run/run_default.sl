@@ -12,9 +12,17 @@
 ##SBATCH --ntasks-per-core=8
 #SBATCH --switches=1@0:10:00       # run on one infiniband switch, wait for 10 minutes
 
-echo "$HOSTNAME"
+echo $HOSTNAME
+echo "task array id: $SLURM_ARRAY_TASK_ID"
+
+# directory associated with job array
+job_dir=$( head -n $SLURM_ARRAY_TASK_ID temp_dirs.txt | tail -1 )
+echo $job_dir
+
+cd $job_dir
 srun --ntasks=8 psim5
 rm psim5
+rm ../temp_dirs.txt 
 
 ml Python/2.7.14-gimkl-2017a
 srun --ntasks=1 python "summary_plot.py"
