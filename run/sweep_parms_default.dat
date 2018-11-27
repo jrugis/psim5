@@ -1,0 +1,19 @@
+#----------------------------------------------------
+#----------------------------------------------------
+# NOTES
+#  - comment lines begin with '#'
+#  - parameter names are case sensitive
+#  - whitespace with spaces ONLY (not tabs)
+#  - there must be exactly either ONE or SEVEN parameter 
+#     values in every parameter line 
+#  - parameter lines may have a trailing comment
+#  - give value lists for either ONE or TWO parameters
+#----------------------------------------------------#
+#----------------------------------------------------
+#
+kIPR   0.0
+kIPR   20.0 21.0 22.0 23.0 24.0 25.0 26.0  
+V_RyR  0.15
+#----------------------------------------------------
+#----------------------------------------------------
+#----------------------------------------------------
