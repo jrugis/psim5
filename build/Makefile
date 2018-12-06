@@ -23,11 +23,10 @@ CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -march=native -mtune=native
 ## program
 
 ## Mahuika
-CPP_INCLUDES = -I/usr/include -I./src/ViennaCL-1.7.1
+CPP_INCLUDES = -I/usr/include
 
 EXE = ../run/psim5
-#OBJS = main.o utils.o cAcinus.o cCell_x.o cVCLSolver.o cCellMesh.o
-OBJS = main.o utils.o cAcinus.o cCell_x.o cCellMesh.o
+OBJS = main.o utils.o cAcinus.o cLumen.o cCell_calcium.o cCellMesh.o
 SRC = ./src
 
 all: $(EXE)
@@ -41,11 +40,11 @@ utils.o: $(SRC)/utils.cpp $(SRC)/utils.hpp
 cAcinus.o: $(SRC)/cAcinus.cpp $(SRC)/cAcinus.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
-cCell_x.o: $(SRC)/cCell_x.cpp $(SRC)/cCell_x.hpp
+cLumen.o: $(SRC)/cLumen.cpp $(SRC)/cLumen.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
-#cVCLSolver.o: $(SRC)/cVCLSolver.cpp $(SRC)/cVCLSolver.hpp
-#	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
+cCell_calcium.o: $(SRC)/cCell_calcium.cpp $(SRC)/cCell_calcium.hpp
+	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
 cCellMesh.o: $(SRC)/cCellMesh.cpp $(SRC)/cCellMesh.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<

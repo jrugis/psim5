@@ -13,11 +13,11 @@
 
 #include "global_defs.hpp"
 
-class cCell_x;
+class cCell_calcium;
 
 class cCellMesh {
 public:
-  cCellMesh(std::string mesh_name, cCell_x* parent);
+  cCellMesh(std::string mesh_name, cCell_calcium* parent);
   ~cCellMesh();
   void print_info();
 
@@ -35,7 +35,7 @@ public:
 
 private:
   std::string id;
-  cCell_x* parent;
+  cCell_calcium* parent;
   void get_mesh(std::string file_name);
 };
 

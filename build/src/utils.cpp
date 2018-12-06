@@ -21,12 +21,13 @@ void utils::fatal_error(const std::string msg, std::ofstream& out){
   exit(1);
 }
 
-// NOTE: used by both the acinus and cell objects
+// NOTE: used by each of the acinus, lumen and cell objects
 void utils::get_parameters(const std::string file_id, int cell_num, tCalcs* p, std::ofstream& out){
   std::string file_name = file_id + ".dat";
   std::ifstream model_file(file_name); // open the model parameters file
   std::string line;                    // file line buffer
   std::vector <std::string> tokens;    // tokenized line
+
   std::string pnames[PCOUNT] = { \
     "delT", "totalT", "Tstride", \
     "PLCsrt", "PLCfin", \
@@ -38,6 +39,9 @@ void utils::get_parameters(const std::string file_id, int cell_num, tCalcs* p, s
     "d_PLC", "V_3K", "V_5K", "K_PLC", "K3K", "V_PLC", \
     "h0", "K_tau", "tau_max", \
     "g0", "K_hRyR", "tau"}; // NOTE: these must match up with the enums in global_defs.hpp !!!
+
+  std::string fpnames[FPCOUNT] = { \
+    "blaH1", "blaH2", "blaH3"}; // NOTE: these must match up with the enums in global_defs.hpp !!!
 
   if (not model_file.is_open()) {
     fatal_error("the model parameters file " + file_name + " could not be opened", out);

@@ -13,10 +13,10 @@
 #include <cmath>
 
 #include "utils.hpp"
-#include "cCell_x.hpp"
+#include "cCell_calcium.hpp"
 #include "cCellMesh.hpp"
 
-cCellMesh::cCellMesh(std::string mesh_name, cCell_x* p){
+cCellMesh::cCellMesh(std::string mesh_name, cCell_calcium* p){
   // initialise member variables
   vertices_count = tetrahedrons_count = 0;
   surface_triangles_count = apical_triangles_count = basal_triangles_count = 0;

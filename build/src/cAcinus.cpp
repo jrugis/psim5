@@ -14,11 +14,12 @@
 #include "utils.hpp"
 #include "cAcinus.hpp"
 
-cAcinus::cAcinus(std::string host_name, int rank, int c_rank, int c_count) {
+cAcinus::cAcinus(std::string host_name, int rank, int c_rank, int c_count, int l_rank) {
   my_rank = rank;
   cell_rank = c_rank;
   cell_count = c_count;
-  id = "a" + std::to_string(my_rank + 1);
+  lumen_rank = l_rank;
+  id = "a1";
 
   out.open(id + ".out");
   out << "<Acinus> id: " << id << std::endl;
