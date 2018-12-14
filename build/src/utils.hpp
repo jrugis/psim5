@@ -17,7 +17,7 @@
 namespace utils
 {
   void fatal_error(const std::string msg, std::ofstream& out);
-  void get_parameters(const std::string file_id, int cell_num, tCalcs* p, std::ofstream& out);
+  void get_parameters(const std::string file_id, int ptype, int cell_num, tCalcs* p, std::ofstream& out);
 //  void save_matrix(std::string file_name, MatrixXXC mat);
 }
 

@@ -2,6 +2,12 @@
 ##
 ## target platform: mahuika
 ##
+## assumes:
+##   ml gimkl/2017a
+##   ml Eigen/3.3.4
+##   ml SUNDIALS/4.0.0-gimkl-2017a
+##
+##
 ###########################################################################################
 ## C++
 CPP_DEFS = -std=c++11
@@ -24,9 +30,10 @@ CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -march=native -mtune=native
 
 ## Mahuika
 CPP_INCLUDES = -I/usr/include
+CPP_LIBS = -lsundials_cvodes
 
 EXE = ../run/psim5
-OBJS = main.o utils.o cAcinus.o cLumen.o cCell_calcium.o cCellMesh.o
+OBJS = main.o utils.o cAcinus.o cLumen.o cCVodes.o cCell_calcium.o cCellMesh.o
 SRC = ./src
 
 all: $(EXE)
@@ -43,6 +50,9 @@ cAcinus.o: $(SRC)/cAcinus.cpp $(SRC)/cAcinus.hpp
 cLumen.o: $(SRC)/cLumen.cpp $(SRC)/cLumen.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
+cCVodes.o: $(SRC)/cCVodes.cpp $(SRC)/cCVodes.hpp
+	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
+
 cCell_calcium.o: $(SRC)/cCell_calcium.cpp $(SRC)/cCell_calcium.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
@@ -50,9 +60,7 @@ cCellMesh.o: $(SRC)/cCellMesh.cpp $(SRC)/cCellMesh.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
 $(EXE): $(OBJS)
-	$(CPP) $(CPP_FLAGS) -o $@ $+
+	$(CPP) $(CPP_FLAGS) $(CPP_LIBS) -o $@ $+
 
 clean:
 	rm *.o
-
-

@@ -22,13 +22,15 @@ void utils::fatal_error(const std::string msg, std::ofstream& out){
 }
 
 // NOTE: used by each of the acinus, lumen and cell objects
-void utils::get_parameters(const std::string file_id, int cell_num, tCalcs* p, std::ofstream& out){
+void utils::get_parameters(const std::string file_id, int ptype, int cell_num, tCalcs* p, std::ofstream& out){
   std::string file_name = file_id + ".dat";
   std::ifstream model_file(file_name); // open the model parameters file
   std::string line;                    // file line buffer
+  std::string *pnames;                 // pointer to vector of paramemter names
   std::vector <std::string> tokens;    // tokenized line
 
-  std::string pnames[PCOUNT] = { \
+  // calcium simulation parameters
+  std::string cpnames[PCOUNT] = { \
     "delT", "totalT", "Tstride", \
     "PLCsrt", "PLCfin", \
     "c0", "ip0", "ce0", "Gamma", \
@@ -40,12 +42,17 @@ void utils::get_parameters(const std::string file_id, int cell_num, tCalcs* p, s
     "h0", "K_tau", "tau_max", \
     "g0", "K_hRyR", "tau"}; // NOTE: these must match up with the enums in global_defs.hpp !!!
 
+  // fluid flow parameters
   std::string fpnames[FPCOUNT] = { \
     "blaH1", "blaH2", "blaH3"}; // NOTE: these must match up with the enums in global_defs.hpp !!!
+
+  if(ptype == calciumParms) pnames = cpnames; // calcium simuilation?
+  if(ptype == flowParms) pnames = fpnames;    // fluid flow?
 
   if (not model_file.is_open()) {
     fatal_error("the model parameters file " + file_name + " could not be opened", out);
   }
+  
   out << "<utils> reading model parameters..." << std::endl;
   for(int n = 0; n < PCOUNT; n++) p[n] = tCalcs(-1.0);  // not-hit marker
   while(getline(model_file, line)){

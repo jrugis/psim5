@@ -48,7 +48,7 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank) {
   cells.push_back({other_cell, face_count}); // one more time
   out << std::endl;
 
-  utils::get_parameters(acinus_id, cell_number, p, out);
+  utils::get_parameters(acinus_id, calciumParms, cell_number, p, out);
   make_matrices();  // create the constant matrices
   init_solvec(); // initialise solution buffer
   ca_file.open(id + "_ca.bin", std::ios::binary);

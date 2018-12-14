@@ -65,6 +65,11 @@ typedef Eigen::Matrix<tCalcs, Eigen::Dynamic, 1> MatrixX1C;
 typedef Eigen::SparseMatrix<tCalcs> SparseMatrixTCalcs;
 
 //************************************************************************ 
+enum parameter_types{ \
+  calciumParms, flowParms, \
+  PTCOUNT};
+
+//************************************************************************ 
 // the 3D calcium model parameters
 enum model_parameters{ \
   delT, totalT, Tstride, \
@@ -79,11 +84,11 @@ enum model_parameters{ \
   g0, K_hRyR, tau, \
   PCOUNT};
 
-  //************************************************************************ 
-  // the fluid flow model parameters
-  enum fluid_flow_parameters{ \
-    blaH1, blaH2, blaH3, \
-    FPCOUNT};
+//************************************************************************ 
+// the fluid flow model parameters
+enum fluid_flow_parameters{ \
+  blaH1, blaH2, blaH3, \
+  FPCOUNT};
 
 //************************************************************************ 
 //************************************************************************ 
