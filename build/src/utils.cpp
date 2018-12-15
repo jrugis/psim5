@@ -28,6 +28,7 @@ void utils::get_parameters(const std::string file_id, int ptype, int cell_num, t
   std::string line;                    // file line buffer
   std::string *pnames;                 // pointer to vector of paramemter names
   std::vector <std::string> tokens;    // tokenized line
+  int pcount;
 
   // calcium simulation parameters
   std::string cpnames[PCOUNT] = { \
@@ -44,17 +45,27 @@ void utils::get_parameters(const std::string file_id, int ptype, int cell_num, t
 
   // fluid flow parameters
   std::string fpnames[FPCOUNT] = { \
-    "blaH1", "blaH2", "blaH3"}; // NOTE: these must match up with the enums in global_defs.hpp !!!
+    "aNkcc1", "a1", "a2", "a3", "a4", \
+    "r", "alpha1", "aNaK", \
+    "GtNa", "GtK", \
+    "GCl", "KCaCC", "eta1", \
+    "GK", "KCaKC", "eta2", \
+    "G1", "KNa", "KH", \
+    "G4", "KCl", "KB", \
+    "GB", "kn", "kp", \
+    "pHl", "pHi", "pHe", "HCO3l", "CO20", "Ul", "Cle", "Nae", \
+    "Ke", "HCO3e", "CO2e", "Hl", "CO2l", "Hy", \
+    "La", "Lb", "Lt"}; // NOTE: these must match up with the enums in global_defs.hpp !!!
 
-  if(ptype == calciumParms) pnames = cpnames; // calcium simuilation?
-  if(ptype == flowParms) pnames = fpnames;    // fluid flow?
+  if(ptype == calciumParms) {pnames = cpnames; pcount = PCOUNT;} // calcium simuilation?
+  if(ptype == flowParms) {pnames = fpnames; pcount = FPCOUNT;}   // fluid flow?
 
   if (not model_file.is_open()) {
     fatal_error("the model parameters file " + file_name + " could not be opened", out);
   }
   
   out << "<utils> reading model parameters..." << std::endl;
-  for(int n = 0; n < PCOUNT; n++) p[n] = tCalcs(-1.0);  // not-hit marker
+  for(int n = 0; n < pcount; n++) p[n] = tCalcs(-1.0);  // not-hit marker
   while(getline(model_file, line)){
     if(line.data()[0] == '#') continue;
     int ci = line.find_first_of("#");     // remove comment, if any
@@ -62,7 +73,7 @@ void utils::get_parameters(const std::string file_id, int ptype, int cell_num, t
 	line = boost::trim_right_copy(line);  // remove trailing whitespace
     boost::split(tokens, line, boost::is_any_of(" "), boost::token_compress_on);
 	bool found = false;
-    for(int n = 0; n < PCOUNT; n++) {
+    for(int n = 0; n < pcount; n++) {
       if(tokens[0] == pnames[n]) {
         p[n] = atof(tokens[ ((tokens.size() == 2) ? 1 : cell_num) ].c_str());
 		found = true; break;
@@ -71,7 +82,7 @@ void utils::get_parameters(const std::string file_id, int ptype, int cell_num, t
 	if(!found) fatal_error("invalid parameter: " + tokens[0], out);
   }
   model_file.close();
-  for(int n = 0; n < PCOUNT; n++)
+  for(int n = 0; n < pcount; n++)
     if(p[n] < 0.0) fatal_error("missing parameter: " + pnames[n], out);
 }
 

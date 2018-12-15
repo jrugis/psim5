@@ -25,7 +25,7 @@ cLumen::cLumen(std::string host_name, int rank, int c_rank, int c_count, int a_r
   out << "<Lumen> id: " << id << std::endl;
   out << "<Lumen> host_name: " << host_name << std::endl;
 
-//  utils::get_parameters(id, 1, p, out);
+  utils::get_parameters(id, flowParms, 1, p, out);
 }
 
 cLumen::~cLumen() {

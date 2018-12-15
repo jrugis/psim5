@@ -87,8 +87,25 @@ enum model_parameters{ \
 //************************************************************************ 
 // the fluid flow model parameters
 enum fluid_flow_parameters{ \
-  blaH1, blaH2, blaH3, \
+  aNkcc1, a1, a2, a3, a4, \
+  r, alpha1, aNaK, \
+  GtNa, GtK, \
+  GCl, KCaCC, eta1, \
+  GK, KCaKC, eta2, \
+  G1, KNa, KH, \
+  G4, KCl, KB, \
+  GB, kn, kp, \
+  pHl, pHi, pHe, HCO3l, CO20, Ul, Cle, Nae, \
+  Ke, HCO3e, CO2e, Hl, CO2l, Hy, \
+  La, Lb, Lt, \
   FPCOUNT};
+  
+//************************************************************************ 
+// thermodynamic constants
+#define R 8.314462100000000
+#define T 310
+#define F 9.645833650000000e4
+#define RTF 26.721207772435513
 
 //************************************************************************ 
 //************************************************************************ 
