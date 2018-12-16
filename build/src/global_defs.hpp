@@ -13,6 +13,11 @@
 #include <Eigen/Sparse>
 
 //************************************************************************ 
+// model sizes
+//  NOTE: a single acinus with lumen (for now)
+#define CELLS_COUNT 7
+
+//************************************************************************ 
 // MPI defs, macros
 
 #define MPI_ERROR_ABORT -101
@@ -37,6 +42,13 @@
 enum acinus2cell{ \
   dTime, cTime, sError, \
   ACCOUNT};
+
+//************************************************************************ 
+// acinus to lumen mpi message
+// delta time, current time, apical calcium, basal calcium, cell volume
+enum acinus2lumen{ \
+  dlTime, clTime, aC, Bc, cV, \
+  ALCOUNT};
 
 //************************************************************************ 
 // cell to cell mpi message

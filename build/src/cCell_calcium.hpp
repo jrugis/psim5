@@ -5,8 +5,8 @@
  *      Author: jrugis
  */
 
-#ifndef cCell_calcium_H_
-#define cCell_calcium_H_
+#ifndef CCELL_CACIUM_H_
+#define CCELL_CACIUM_H_
 
 #include <fstream>
 #include <string>
@@ -73,5 +73,5 @@ private:
   tCalcs get_h_reaction(tCalcs c, tCalcs h);// IPR dynamics (apical)
 };
 
-#endif /* cCell_calcium_H_ */
+#endif /* CCELL_CACIUM_H_ */
 

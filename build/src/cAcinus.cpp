@@ -61,11 +61,11 @@ void cAcinus::run() {
   // simulation time stepping and synchronization
   clock_gettime(CLOCK_REALTIME, &start);
   while((p[totalT] - t) > 0.000001 ) {  // HARD CODED: assumes solver_dt always > 1us
-    float f = t; // convert to float for reduced file size
-    error = snd_recv(t, solver_dt);
+    error = snd_recv(t, solver_dt);  // invoke the calcium solver
     if(error != 0.0) { // change time step?
       // ...
-    }
+    } 
+    // ... // invoke the fluid flow solver
     clock_gettime(CLOCK_REALTIME, &end);
 	elapsed = (end.tv_sec - start.tv_sec) + ((end.tv_nsec - start.tv_nsec) / 1000000000.0);
 	out << std::fixed << std::setprecision(3);

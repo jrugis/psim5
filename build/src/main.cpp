@@ -18,7 +18,6 @@
 // one acinus + seven cells (for now, UNTIL WE ADD SOME MORE)
 #define ACINUS_RANK 0
 #define CELLS_RANK 1
-#define CELLS_COUNT 7
 #define LUMEN_RANK (CELLS_RANK + CELLS_COUNT)
 #define MPI_NODES (CELLS_COUNT + 2)
 
@@ -54,7 +53,7 @@ int main(int argc,char **args){
   }
   // OR an mpi process for the lumenal flow,
   else if(commRank == LUMEN_RANK){ 
-    cLumen* lumen = new cLumen(host_name, commRank, CELLS_RANK, CELLS_COUNT, ACINUS_RANK);
+    cLumen* lumen = new cLumen(host_name, commRank, CELLS_COUNT, ACINUS_RANK);
     lumen->run();
     delete lumen;
   }
