@@ -7,7 +7,8 @@
 #SBATCH --partition=large          # 3 days,  1024 (8424) cores, 3GB
 ##SBATCH --partition=bigmem         # 7 days,  108 (108) cores,   15GB
 #SBATCH --hint=nomultithread       # don't use hyperthreading
-#SBATCH --ntasks=9                 # number of tasks (e.g. MPI)
+##SBATCH --ntasks=9                 # number of tasks (e.g. MPI)
+#SBATCH --ntasks=8                 # number of tasks (e.g. MPI)
 #SBATCH --switches=1@0:10:00       # run on one infiniband switch, wait for 10 minutes
 
 echo $HOSTNAME

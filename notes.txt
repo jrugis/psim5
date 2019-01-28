@@ -36,8 +36,9 @@ cp sweep_parms_default.dat my_sweep_parms_xxxx.dat
 edit my_run_xxxx.sl
 edit my_flow_parms_xxxx.dat
 edit my_calcium_parms_xxxx.dat
+edit my_sweep_parms_xxxx.dat
 
-python run_sim.py my_run_xxxx.sl my_flow_parms_xxxx.dat my_clacium_parms_xxxx.dat my_sweep_parms_xxxx.dat
+python run_sim.py my_run_xxxx.sl my_flow_parms_xxxx.dat my_calcium_parms_xxxx.dat my_sweep_parms_xxxx.dat
 squeue -u UPI
 
 
