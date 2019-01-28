@@ -30,10 +30,11 @@ CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -march=native -mtune=native
 
 ## Mahuika
 CPP_INCLUDES = -I/usr/include
-CPP_LIBS = -lsundials_cvodes
+#CPP_LIBS = -lsundials_cvodes
 
 EXE = ../run/psim5
-OBJS = main.o utils.o cAcinus.o cLumen.o cCVodes.o cCell_flow.o cCell_calcium.o cCellMesh.o
+#OBJS = main.o utils.o cAcinus.o cLumen.o cCVodes.o cCell_flow.o cCell_calcium.o cCellMesh.o
+OBJS = main.o utils.o cAcinus.o cCell_calcium.o cCellMesh.o
 SRC = ./src
 
 all: $(EXE)
@@ -47,14 +48,14 @@ utils.o: $(SRC)/utils.cpp $(SRC)/utils.hpp
 cAcinus.o: $(SRC)/cAcinus.cpp $(SRC)/cAcinus.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
-cLumen.o: $(SRC)/cLumen.cpp $(SRC)/cLumen.hpp
-	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
+#cLumen.o: $(SRC)/cLumen.cpp $(SRC)/cLumen.hpp
+#	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
-cCVodes.o: $(SRC)/cCVodes.cpp $(SRC)/cCVodes.hpp
-	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
+#cCVodes.o: $(SRC)/cCVodes.cpp $(SRC)/cCVodes.hpp
+#	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
-cCell_flow.o: $(SRC)/cCell_flow.cpp $(SRC)/cCell_flow.hpp
-	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
+#cCell_flow.o: $(SRC)/cCell_flow.cpp $(SRC)/cCell_flow.hpp
+#	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
 cCell_calcium.o: $(SRC)/cCell_calcium.cpp $(SRC)/cCell_calcium.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<

@@ -12,14 +12,15 @@
 
 #include "global_defs.hpp"
 #include "cAcinus.hpp"
-#include "cLumen.hpp"
+##include "cLumen.hpp"
 #include "cCell_calcium.hpp"
 
 // one acinus + seven cells (for now, UNTIL WE ADD SOME MORE)
 #define ACINUS_RANK 0
 #define CELLS_RANK 1
 #define LUMEN_RANK (CELLS_RANK + CELLS_COUNT)
-#define MPI_NODES (CELLS_COUNT + 2)
+##define MPI_NODES (CELLS_COUNT + 2)
+#define MPI_NODES (CELLS_COUNT + 1)
 
 #define TEMP_SIZE 40
 
@@ -52,11 +53,11 @@ int main(int argc,char **args){
     delete acinus;
   }
   // OR an mpi process for the lumenal flow,
-  else if(commRank == LUMEN_RANK){ 
-    cLumen* lumen = new cLumen(host_name, commRank, CELLS_COUNT, ACINUS_RANK);
-    lumen->run();
-    delete lumen;
-  }
+//  else if(commRank == LUMEN_RANK){ 
+//    cLumen* lumen = new cLumen(host_name, commRank, CELLS_COUNT, ACINUS_RANK);
+//    lumen->run();
+//    delete lumen;
+//  }
   // OR an mpi process for cellular calcium.
   else{
     cCell_calcium* cell = new cCell_calcium(host_name, commRank, ACINUS_RANK);
