@@ -18,7 +18,8 @@ job_dir=$( head -n $SLURM_ARRAY_TASK_ID dirs.txt | tail -1 )
 echo $job_dir
 
 cd $job_dir
-srun --ntasks=9 psim5
+#srun --ntasks=9 psim5
+srun --ntasks=8 psim5
 rm psim5
 
 ml Python/2.7.14-gimkl-2017a

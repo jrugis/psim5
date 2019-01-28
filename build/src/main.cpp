@@ -12,14 +12,14 @@
 
 #include "global_defs.hpp"
 #include "cAcinus.hpp"
-##include "cLumen.hpp"
+//#include "cLumen.hpp"
 #include "cCell_calcium.hpp"
 
 // one acinus + seven cells (for now, UNTIL WE ADD SOME MORE)
 #define ACINUS_RANK 0
 #define CELLS_RANK 1
 #define LUMEN_RANK (CELLS_RANK + CELLS_COUNT)
-##define MPI_NODES (CELLS_COUNT + 2)
+//#define MPI_NODES (CELLS_COUNT + 2)
 #define MPI_NODES (CELLS_COUNT + 1)
 
 #define TEMP_SIZE 40
@@ -48,7 +48,8 @@ int main(int argc,char **args){
   // This code is running as EITHER an mpi process for the acinus,
   if(commRank == ACINUS_RANK){
     std::cout << "<main> rank " << commRank << " running..." << std::endl;
-    cAcinus* acinus = new cAcinus(host_name, commRank, CELLS_RANK, CELLS_COUNT, LUMEN_RANK);
+    //cAcinus* acinus = new cAcinus(host_name, commRank, CELLS_RANK, CELLS_COUNT, LUMEN_RANK);
+    cAcinus* acinus = new cAcinus(host_name, commRank, CELLS_RANK, CELLS_COUNT);
     acinus->run();
     delete acinus;
   }
