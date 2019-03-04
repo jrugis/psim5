@@ -34,19 +34,28 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank) {
   out << "<Cell_x> common faces with cells:";
   int other_cell = -1;
   int face_count = 0;
+  int start_index = 0;
   for(int r = 0; r < mesh->common_triangles.rows(); r++) {
     if(mesh->common_triangles(r, oCell) != other_cell) {
       if(other_cell != -1) {
-        cells.push_back({other_cell, face_count});
+        cells.push_back({other_cell, face_count, start_index});
         face_count = 0;
+        start_index = r;
       }
       other_cell = mesh->common_triangles(r, oCell);
       out << " " << other_cell + 1;  // cells are zero indexed
     }
     face_count++;
   }
-  cells.push_back({other_cell, face_count}); // one more time
+  cells.push_back({other_cell, face_count, start_index}); // one more time
   out << std::endl;
+
+  exchange_send_buffer = new float*[cells.size()];
+  exchange_recv_buffer = new float*[cells.size()];
+  for (int i = 0; i < cells.size(); i++) {
+    exchange_send_buffer[i] = new float[cells[i].fcount * 2];  // pass triangle index and value
+    exchange_recv_buffer[i] = new float[cells[i].fcount * 2];
+  }
 
   utils::get_parameters(acinus_id, calciumParms, cell_number, p, out);
   make_matrices();  // create the constant matrices
@@ -54,6 +63,9 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank) {
   ca_file.open(id + "_ca.bin", std::ios::binary);
   ip3_file.open(id + "_ip3.bin", std::ios::binary);
   cer_file.open(id + "_cer.bin", std::ios::binary);
+
+  exchange_load.resize(DIFVARS * mesh->vertices_count, 1);
+  exchange_load.reserve(mesh->common_triangles_count);
 }
 
 cCell_calcium::~cCell_calcium() {
@@ -62,6 +74,12 @@ cCell_calcium::~cCell_calcium() {
   cer_file.close();
   out.close();
   delete mesh;
+  for (int i = 0; i < cells.size(); i++) {
+    delete [] exchange_send_buffer[i];
+    delete [] exchange_recv_buffer[i];
+  }
+  delete [] exchange_send_buffer;
+  delete [] exchange_recv_buffer;
 }
 
 void cCell_calcium::init_solvec(){
@@ -390,26 +408,97 @@ MatrixX1C cCell_calcium::solve_nd(tCalcs dt){ // the non-diffusing variables
   return svec;
 }
 
+void cCell_calcium::compute_exchange_values(int cell) {
+  int np = mesh->vertices_count;
+  float* buffer = exchange_send_buffer[cell];
+
+  // loop over the common triangles of this cell
+  int start_index = cells[cell].sindex;
+  int num_common_triangles = cells[cell].fcount;
+  for (int i = 0; i < num_common_triangles; i++) {
+    int index = start_index + i;
+    int this_triangle = mesh->common_triangles(index, tTri);
+    int other_triangle = mesh->common_triangles(index, oTri);
+
+    // sending the average ip3 of this triangle's vertices
+    double exchange_value = 0.0;
+    for (int j = 0; j < 3; j++) {
+      int vertex_index = mesh->surface_triangles(this_triangle, j);
+      exchange_value += solvec(np + vertex_index);
+    }
+    exchange_value /= 3.0;
+
+    buffer[2*i  ] = static_cast<float>(other_triangle);  // TODO: looks like probably don't need to send this
+    buffer[2*i+1] = static_cast<float>(exchange_value);
+  }
+}
+
+void cCell_calcium::compute_exchange_load(int cell) {
+  int num_common_triangles = cells[cell].fcount;
+
+  // TODO: can we assume the ordering of common_triangles will always be the same from both ends or do we need to send `other_triangle` too!!??
+
+  float *sendbuf = exchange_send_buffer[cell];
+  float *recvbuf = exchange_recv_buffer[cell];
+  int recv_cell_number = cells[cell].cell;
+
+  // loop over common triangles and compute ip3 fluxes across them
+  for (int i = 0; i < num_common_triangles; i++) {
+    int this_tri = static_cast<int>(recvbuf[2*i]);
+
+    // TODO: checking ordering - not for production
+    if (this_tri != mesh->common_triangles(cells[cell].sindex + i, tTri)) {
+      out << "warning: common triangle ordering must be different!!!\n";
+    }
+
+    
+
+
+  }
+
+
+}
+
 void cCell_calcium::exchange() {
-  float* msg;
-  MPI_Status stat;
-  MPI_Request request;
-  // send common face values to other cells (non-blocking)
-  for(std::vector<cfc>::iterator it = cells.begin() ; it != cells.end(); ++it) {
-    int mlength = C2CCOUNT * it->fcount;
-    msg = new float[mlength];
-    //...
-    MPI_CHECK(MPI_Isend(msg, mlength, MPI_FLOAT, it->cell + 1, CELL_CELL_TAG, MPI_COMM_WORLD, &request));
-    delete[] msg;
+  exchange_load.setZero();
+
+  int num_connected_cells = cells.size();
+
+  MPI_Request send_requests[num_connected_cells];
+  MPI_Request recv_requests[num_connected_cells];
+
+  // for each connected cell, compute the values to exchange and send them (non-blocking)
+  for (int i = 0; i < num_connected_cells; i++) {
+    int dest = cells[i].cell + 1;
+    int mlength = cells[i].fcount * 2;
+    float* msg = exchange_send_buffer[i];
+
+    // fill msg with (triangle_index, triangle_value) pairs for each common triangle
+    compute_exchange_values(i);
+
+    // communicate
+    MPI_CHECK(MPI_Isend(msg, mlength, MPI_FLOAT, dest, CELL_CELL_TAG, MPI_COMM_WORLD, &send_requests[i]));
   }
-  // receive common face values back from other cells
-  for(std::vector<cfc>::iterator it = cells.begin() ; it != cells.end(); ++it) {
-    int mlength = C2CCOUNT * it->fcount;
-    msg = new float[mlength];
-    MPI_CHECK(MPI_Recv(msg, mlength, MPI_FLOAT, it->cell + 1, CELL_CELL_TAG, MPI_COMM_WORLD, &stat));
-    //...
-    delete[] msg;
+
+  // receive common face values back from other cells (non-blocking)
+  for (int i = 0; i < num_connected_cells; i++) {
+    int source = cells[i].cell + 1;
+    int mlength = cells[i].fcount * 2;
+    float* msg = exchange_recv_buffer[i];
+    MPI_CHECK(MPI_Irecv(msg, mlength, MPI_FLOAT, source, CELL_CELL_TAG, MPI_COMM_WORLD, &recv_requests[i]));
   }
+
+  // process receive messages as they come in
+  for (int i = 0; i < num_connected_cells; i++) {
+    MPI_Status status;
+    int recv_index;
+    MPI_CHECK(MPI_Waitany(num_connected_cells, recv_requests, &recv_index, &status));
+    compute_exchange_load(recv_index);
+  }
+
+  // wait on send requests (frees memory associated with sends)
+  MPI_Status send_statuses[num_connected_cells];
+  MPI_CHECK(MPI_Waitall(num_connected_cells, send_requests, send_statuses));
 }
 
 void cCell_calcium::run() {
@@ -459,7 +548,7 @@ void cCell_calcium::run() {
     exchange();
 
     // calculate solution for diffusing variables
-    rhs = (sparseMass * prev_solvec) + (delta_time * make_load(delta_time, plc));
+    rhs = (sparseMass * prev_solvec) + (delta_time * (make_load(delta_time, plc) + exchange_load));
     clock_gettime(CLOCK_REALTIME, &start);
     solvec = solver.solve(rhs);                   // Eigen solver
     if(solver.info() != Eigen::Success) {
