@@ -51,9 +51,9 @@ private:
   Eigen::SimplicialLDLT<Eigen::SparseMatrix<tCalcs>> solver;
   tCalcs p[PCOUNT]; // the model parameters array
   std::vector<cfc> cells; // vector of connected cells and face counts
-  float** exchange_send_buffer;  // buffers for exchanging values between connected cells
-  float** exchange_recv_buffer;
-  SparseMatrixTCalcs exchange_load;
+  tCalcs** exchange_send_buffer;  // buffers for exchanging values between connected cells
+  tCalcs** exchange_recv_buffer;
+  ArrayX1C exchange_load_ip;
 
   Eigen::Array<tCalcs, Eigen::Dynamic, MODELECOUNT> element_data;
   Eigen::Array<tCalcs, Eigen::Dynamic, MODELSCOUNT> surface_data;
