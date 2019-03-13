@@ -440,7 +440,7 @@ void cCell_calcium::compute_exchange_load(int cell) {
 
     // flux across this triangle
     tCalcs exchange_value = recvbuf[i] - sendbuf[i];
-    exchange_value *= Fip;
+    exchange_value *= p[Fip];
     exchange_value *= mesh->surface_triangle_areas(this_triangle);
 
     // converting from triangle back to vertices
