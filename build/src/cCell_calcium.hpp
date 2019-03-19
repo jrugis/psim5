@@ -34,6 +34,7 @@ typedef Eigen::Array<tCalcs, REF_MASS_SIZE, REF_MASS_SIZE> ArrayRefMass;
 typedef Eigen::Triplet<tCalcs> Triplet;
 
 struct cfc {int cell; int fcount; int sindex;}; // other cell, connected face count, common triangles start index
+struct exchange_t {int triangle; tCalcs value;}; // triangle index, triangle value
 
 class cCell_calcium {
 friend class cCellMesh;
@@ -51,8 +52,9 @@ private:
   Eigen::SimplicialLDLT<Eigen::SparseMatrix<tCalcs>> solver;
   tCalcs p[PCOUNT]; // the model parameters array
   std::vector<cfc> cells; // vector of connected cells and face counts
-  tCalcs** exchange_send_buffer;  // buffers for exchanging values between connected cells
-  tCalcs** exchange_recv_buffer;
+  MPI_Datatype mpi_exchange_type;
+  exchange_t** exchange_send_buffer;  // buffers for exchanging values between connected cells
+  exchange_t** exchange_recv_buffer;
   ArrayX1C exchange_load_ip;
 
   Eigen::Array<tCalcs, Eigen::Dynamic, MODELECOUNT> element_data;

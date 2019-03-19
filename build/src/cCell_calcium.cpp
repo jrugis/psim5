@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <vector>
+#include <cstddef>
 
 #include "global_defs.hpp"
 #include "utils.hpp"
@@ -51,11 +52,11 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank) {
   out << std::endl;
 
   // allocate exchange arrays once to save time (could be allocated and freed as needed if memory usage becomes a bottleneck)
-  exchange_send_buffer = new tCalcs*[cells.size()];
-  exchange_recv_buffer = new tCalcs*[cells.size()];
+  exchange_send_buffer = new exchange_t*[cells.size()];
+  exchange_recv_buffer = new exchange_t*[cells.size()];
   for (std::vector<cfc>::size_type i = 0; i < cells.size(); i++) {
-    exchange_send_buffer[i] = new tCalcs[cells[i].fcount];
-    exchange_recv_buffer[i] = new tCalcs[cells[i].fcount];
+    exchange_send_buffer[i] = new exchange_t[cells[i].fcount];
+    exchange_recv_buffer[i] = new exchange_t[cells[i].fcount];
   }
   exchange_load_ip.resize(mesh->vertices_count, Eigen::NoChange);
 
@@ -65,6 +66,16 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank) {
   ca_file.open(id + "_ca.bin", std::ios::binary);
   ip3_file.open(id + "_ip3.bin", std::ios::binary);
   cer_file.open(id + "_cer.bin", std::ios::binary);
+
+  // set up MPI datatype
+  const int nitems = 2;
+  int blocklengths[2] = {1, 1};
+  MPI_Datatype types[2] = {MPI_INT, MPI_DOUBLE};  // TODO: should be related to tCalcs
+  MPI_Aint offsets[2];
+  offsets[0] = offsetof(exchange_t, triangle);
+  offsets[1] = offsetof(exchange_t, value);
+  MPI_Type_create_struct(nitems, blocklengths, offsets, types, &mpi_exchange_type);
+  MPI_Type_commit(&mpi_exchange_type);
 }
 
 cCell_calcium::~cCell_calcium() {
@@ -409,7 +420,7 @@ MatrixX1C cCell_calcium::solve_nd(tCalcs dt){ // the non-diffusing variables
 
 void cCell_calcium::compute_exchange_values(int cell) {
   int np = mesh->vertices_count;
-  tCalcs* buffer = exchange_send_buffer[cell];
+  exchange_t* buffer = exchange_send_buffer[cell];
 
   // loop over the common triangles of this cell
   int start_index = cells[cell].sindex;
@@ -424,22 +435,26 @@ void cCell_calcium::compute_exchange_values(int cell) {
       int vertex_index = mesh->surface_triangles(this_triangle, j);
       exchange_value += solvec(np + vertex_index);
     }
-    buffer[i] = exchange_value * third;
+    buffer[i].triangle = mesh->common_triangles(index, oTri);
+    buffer[i].value = exchange_value * third;
   }
 }
 
 void cCell_calcium::compute_exchange_load(int cell) {
   int num_common_triangles = cells[cell].fcount;
-  tCalcs* sendbuf = exchange_send_buffer[cell];
-  tCalcs* recvbuf = exchange_recv_buffer[cell];
+  exchange_t* sendbuf = exchange_send_buffer[cell];
+  exchange_t* recvbuf = exchange_recv_buffer[cell];
 
   // loop over common triangles and compute ip3 fluxes across them
   for (int i = 0; i < num_common_triangles; i++) {
     // we are assuming the ordering of common triangles between two cells is the same in both cells
     int this_triangle = mesh->common_triangles(cells[cell].sindex + i, tTri);
+    if (this_triangle != recvbuf[i].triangle) {
+        std::cerr << "ORDERINGERROR!!!\n";
+    }
 
     // flux across this triangle
-    tCalcs exchange_value = recvbuf[i] - sendbuf[i];
+    tCalcs exchange_value = recvbuf[i].value - sendbuf[i].value;
     exchange_value *= p[Fip];
     exchange_value *= mesh->surface_triangle_areas(this_triangle);
 
@@ -466,21 +481,21 @@ void cCell_calcium::exchange() {
   for (int i = 0; i < num_connected_cells; i++) {
     int dest = cells[i].cell + 1;
     int mlength = cells[i].fcount;
-    tCalcs* msg = exchange_send_buffer[i];
+    exchange_t* msg = exchange_send_buffer[i];
 
     // fill msg with values for each common triangle with this cell
     compute_exchange_values(i);
 
     // communicate
-    MPI_CHECK(MPI_Isend(msg, mlength, MPI_DOUBLE, dest, CELL_CELL_TAG, MPI_COMM_WORLD, &send_requests[i]));
+    MPI_CHECK(MPI_Isend(msg, mlength, mpi_exchange_type, dest, CELL_CELL_TAG, MPI_COMM_WORLD, &send_requests[i]));
   }
 
   // receive common triangle values back from other cells (non-blocking)
   for (int i = 0; i < num_connected_cells; i++) {
     int source = cells[i].cell + 1;
     int mlength = cells[i].fcount;
-    tCalcs* msg = exchange_recv_buffer[i];
-    MPI_CHECK(MPI_Irecv(msg, mlength, MPI_DOUBLE, source, CELL_CELL_TAG, MPI_COMM_WORLD, &recv_requests[i]));
+    exchange_t* msg = exchange_recv_buffer[i];
+    MPI_CHECK(MPI_Irecv(msg, mlength, mpi_exchange_type, source, CELL_CELL_TAG, MPI_COMM_WORLD, &recv_requests[i]));
   }
 
   // process receive messages as they come in
