@@ -20,7 +20,7 @@ cCellMesh::cCellMesh(std::string mesh_name, cCell_calcium* p){
   // initialise member variables
   vertices_count = tetrahedrons_count = 0;
   surface_triangles_count = apical_triangles_count = basal_triangles_count = 0;
-  common_triangles_count = common_apical_triangles_count = 0;
+  common_triangles_count = 0;
   apical_triangles_area = basal_triangles_area = 0.0;
   parent = p;
   id = mesh_name;  
@@ -107,7 +107,7 @@ void cCellMesh::get_mesh(std::string file_name){
   cell_file.close();
 }
 
-bool cCellMesh::is_triangle_apical(int triangle) {
+bool cCellMesh::is_triangle_apical(int triangle, int& apical_index) {
   // return True if the given triangle is apical, otherwise False
   // this assumes the list of apical triangle indices is sorted from lowest to highest
   // this has been verified for the current meshes
@@ -121,6 +121,7 @@ bool cCellMesh::is_triangle_apical(int triangle) {
 
     // check if index present at midpoint
     if (apical_triangles(m) == triangle) {
+      apical_index = m;
       return true;
     }
 
@@ -135,12 +136,23 @@ bool cCellMesh::is_triangle_apical(int triangle) {
     }
   }
 
+//  // alternative to binary search
+//  for (int i = 0; i < apical_triangles_count; i++) {
+//    if (triangle == apical_triangles(i)) {
+//      // triangle is apical
+//      apical_index = i;
+//      return true;
+//    }
+//  }
+
   // triangle is not apical
+  apical_index = -1;
   return false;
 }
 
 void cCellMesh::identify_common_apical_triangles() {
-  parent->out << "identifying common apical triangles" << std::endl;
+  parent->out << "<CellMesh> building common apical triangles list" << std::endl;
+
   // NOTE: this could be a feature of the mesh (i.e. included in the mesh file)
 
 //    parent->out << "CHECKING APICAL SORTED...\n";
@@ -150,22 +162,35 @@ void cCellMesh::identify_common_apical_triangles() {
 //        }
 //    }
 
-  // the list of apical triangles is a subset of the list of common triangles
-  common_apical_triangles.resize(common_triangles_count, Eigen::NoChange);
+  common_apical_triangles.resize(apical_triangles_count, Eigen::NoChange);
 
-  common_apical_triangles_count = 0;
+  // record which apical triangles have been included from the common triangles list,
+  // so can add any remaining apical triangles to the list
+  std::vector<int> apical_mask(apical_triangles_count, 0);
+
+  // start with common triangles that are also apical triangles
+  int count = 0;
   for (int i = 0; i < common_triangles_count; i++) {
-    int com_tri_index = common_triangles(i, tTri);
-    bool is_apical = is_triangle_apical(com_tri_index);
-    if (is_apical) {
+    int apical_index = -1;
+    if (is_triangle_apical(common_triangles(i, tTri), apical_index)) {
+      apical_mask[apical_index] = 1;
       for (int j = 0; j < CCONNCOUNT; j++) {
-        common_apical_triangles(common_apical_triangles_count, j) = common_triangles(i, j);
+        common_apical_triangles(count, j) = common_triangles(i, j);
       }
-      common_apical_triangles_count++;
+      count++;
     }
   }
+  parent->out << "<CellMesh> apical triangles common with other cells: " << count << std::endl;
 
-  common_apical_triangles.conservativeResize(common_apical_triangles_count, Eigen::NoChange);
+  // now add on the apical triangles not in the common triangles list
+  for (int i = 0; i < apical_triangles_count; i++) {
+    if (not apical_mask[i]) {
+      common_apical_triangles(count, tTri) = apical_triangles(i);
+      common_apical_triangles(count, oCell) = parent->cell_number;
+      common_apical_triangles(count, oTri) = apical_triangles(i);
+      count++;
+    }
+  }
 }
 
 void cCellMesh::compute_surface_triangle_areas() {
@@ -211,5 +236,4 @@ void cCellMesh::print_info(){
   parent->out << "<CellMesh> basal_triangles_count: " << basal_triangles_count << std::endl;
   parent->out << "<CellMesh> basal_triangles_area: " << basal_triangles_area << std::endl;
   parent->out << "<CellMesh> common_triangles_count: " << common_triangles_count << std::endl;
-  parent->out << "<CellMesh> common_apical_triangles_count: " << common_apical_triangles_count << std::endl;
 }

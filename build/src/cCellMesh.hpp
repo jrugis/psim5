@@ -23,7 +23,7 @@ public:
 
   int vertices_count, tetrahedrons_count;
   int surface_triangles_count, apical_triangles_count, basal_triangles_count;
-  int common_triangles_count, common_apical_triangles_count;
+  int common_triangles_count;
   tCalcs apical_triangles_area, basal_triangles_area;
   Eigen::Array<tCoord, Eigen::Dynamic, 3, Eigen::RowMajorBit> vertices; // 3x coordinate
   Eigen::Array<int, Eigen::Dynamic, 3, Eigen::RowMajorBit> surface_triangles; // 3x vertex
@@ -41,7 +41,7 @@ private:
   cCell_calcium* parent;
   void get_mesh(std::string file_name);
   void compute_surface_triangle_areas();
-  bool is_triangle_apical(int triangle);
+  bool is_triangle_apical(int triangle, int& apical_index);
   void identify_common_apical_triangles();
 };
 
