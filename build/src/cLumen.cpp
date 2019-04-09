@@ -10,13 +10,12 @@
 
 #include "global_defs.hpp"
 #include "utils.hpp"
-#include "cCell_flow.hpp"
 #include "cLumen.hpp"
 
-cLumen::cLumen(std::string host_name, int rank, int c_count, int a_rank) {
+cLumen::cLumen(std::string host_name, int rank, int c_rank, int c_count) {
   my_rank = rank;
   cell_count = c_count;
-  acinus_rank = a_rank;
+  cell_rank = c_rank;
   id = "l1";
 
   out.open(id + ".out");
@@ -24,12 +23,22 @@ cLumen::cLumen(std::string host_name, int rank, int c_count, int a_rank) {
   out << "<Lumen> host_name: " << host_name << std::endl;
 
   utils::get_parameters(id, flowParms, 1, p, out);
-  for(int i = 0; i < CELLS_COUNT; i++) cells[i] = (new cCell_flow(i, p, out));
+
+  prep_cell_calcium();
 }
 
 cLumen::~cLumen() {
-  for(int i = 0; i < CELLS_COUNT; i++) delete cells[i];
   out.close();
+}
+
+void cLumen::prep_cell_calcium() {
+  // TODO: for each cell we need to get number of neighbours and list of neighbours
+  // TODO: we also need to send some parameters to them
+  
+  for (int i = 0; i < cell_count; i++) {
+//    int num
+//    MPI_CHECK(MPI_Irecv(msg, mlength, MPI_DOUBLE, dest, CELL_CELL_TAG, MPI_COMM_WORLD, &send_requests[i]));
+  }
 }
 
 void cLumen::run() {

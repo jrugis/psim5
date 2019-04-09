@@ -13,13 +13,15 @@
 #include "global_defs.hpp"
 #include "utils.hpp"
 #include "cAcinus.hpp"
+#include "cLumen.hpp"
 
-//cAcinus::cAcinus(std::string host_name, int rank, int c_rank, int c_count, int l_rank) {
 cAcinus::cAcinus(std::string host_name, int rank, int c_rank, int c_count) {
   my_rank = rank;
   cell_rank = c_rank;
   cell_count = c_count;
-  //lumen_rank = l_rank;
+  // for now just run the Lumen from within Acinus but could be moved to separated process if needed
+  // or if there are multiple Lumen
+  lumen = new cLumen(host_name, rank, c_rank, c_count);
   id = "a1";
 
   out.open(id + ".out");
@@ -31,6 +33,7 @@ cAcinus::cAcinus(std::string host_name, int rank, int c_rank, int c_count) {
 
 cAcinus::~cAcinus() {
   out.close();
+  delete lumen;
 }
 
 // NOTE: mpi send to all first, then receive from all
@@ -62,11 +65,11 @@ void cAcinus::run() {
   // simulation time stepping and synchronization
   clock_gettime(CLOCK_REALTIME, &start);
   while((p[totalT] - t) > 0.000001 ) {  // HARD CODED: assumes solver_dt always > 1us
+    // ... // invoke the fluid flow solver
     error = snd_recv(t, solver_dt);  // invoke the calcium solver
     if(error != 0.0) { // change time step?
       // ...
     } 
-    // ... // invoke the fluid flow solver
     clock_gettime(CLOCK_REALTIME, &end);
 	elapsed = (end.tv_sec - start.tv_sec) + ((end.tv_nsec - start.tv_nsec) / 1000000000.0);
 	out << std::fixed << std::setprecision(3);

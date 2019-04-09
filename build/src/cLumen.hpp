@@ -13,20 +13,19 @@
 #include <vector>
 
 #include "global_defs.hpp"
-#include "cCell_flow.hpp"
 
 class cLumen {
 public:
-  cLumen(std::string host_name, int my_rank, int cell_count, int acinus_rank);
+  cLumen(std::string host_name, int rank, int c_rank, int c_count);
   ~cLumen();
   void run();
 
 private:
+  void prep_cell_calcium();
   std::string id;
   std::ofstream out;
   tCalcs p[FPCOUNT];  // the fluid flow parameters array
-  cCell_flow *cells[CELLS_COUNT];  // the cells connected to this lumen
-  int my_rank, cell_rank, cell_count, acinus_rank;
+  int my_rank, cell_rank, cell_count;
   tCalcs na; // sodium
   tCalcs k;  // patasium 
 };

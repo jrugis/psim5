@@ -20,9 +20,10 @@
 #include "cCellMesh.hpp"
 #include "cCell_calcium.hpp"
 
-cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank) {
+cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank, int l_rank) {
   cell_number = my_rank;
   acinus_rank = a_rank;
+  lumen_rank = l_rank;
   acinus_id = "a" + std::to_string(acinus_rank + 1);
   id = acinus_id + "c" + std::to_string(my_rank);
   out.open(id + ".out");
@@ -31,6 +32,8 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank) {
 
   mesh = new cCellMesh(id, this);
   mesh->print_info();
+
+  // common cells for exchanging ip3 preparation
   out << "<Cell_x> common faces with cells:";
   int other_cell = -1;
   int face_count = 0;
@@ -50,7 +53,10 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank) {
   cells.push_back({other_cell, face_count, start_index}); // one more time
   out << std::endl;
 
-  // allocate exchange arrays once to save time (could be allocated and freed as needed if memory usage becomes a bottleneck)
+  // TODO: preparing fluid flow related stuff (communicator, cells_fluid_flow, params communicated from lumen, send connectivity if possible)
+  prep_fluid_flow();
+
+  // allocate ip3 exchange arrays once to save time (could be allocated and freed as needed if memory usage becomes a bottleneck)
   exchange_send_buffer = new tCalcs*[cells.size()];
   exchange_recv_buffer = new tCalcs*[cells.size()];
   for (std::vector<cfc>::size_type i = 0; i < cells.size(); i++) {
@@ -79,6 +85,35 @@ cCell_calcium::~cCell_calcium() {
   }
   delete [] exchange_send_buffer;
   delete [] exchange_recv_buffer;
+}
+
+void cCell_calcium::prep_fluid_flow() {
+  out << "<Cell_x> preparing fluid flow stuff..." << std::endl;
+
+  // common apical cells for fluid flow calculation
+  out << "<Cell_x> common apical faces with cells:";
+  int other_cell = -1;
+  int face_count = 0;
+  int start_index = 0;
+  for(int r = 0; r < mesh->apical_triangles_count; r++) {
+    if(mesh->common_apical_triangles(r, oCell) != other_cell) {
+      if(other_cell != -1) {
+        cells_fluid_flow.push_back({other_cell, face_count, start_index});
+        face_count = 0;
+        start_index = r;
+      }
+      other_cell = mesh->common_apical_triangles(r, oCell);
+      out << " " << other_cell + 1;  // cells are zero indexed
+    }
+    face_count++;
+  }
+  cells_fluid_flow.push_back({other_cell, face_count, start_index}); // one more time
+  out << std::endl;
+
+  // TODO: send to Lumen the "neigh" list and number of neighbours
+
+
+
 }
 
 void cCell_calcium::init_solvec(){
@@ -529,6 +564,10 @@ void cCell_calcium::run() {
     out << "<Cell_x> step: " << step << " current_time: " << current_time << "s";
     out << " delta_time: " << delta_time << "s" << std::endl;
     plc = ((current_time >= p[PLCsrt]) and (current_time <= p[PLCfin])); // PLC on or off?
+
+    // TODO: Lumen exchange (send Ca info for fx_ap and fx_ba, receive back volume)
+
+
 
     if(delta_time != prev_delta_time) { // recalculate A matrix if time step changed
       sparseA = sparseMass + (delta_time * sparseStiff);

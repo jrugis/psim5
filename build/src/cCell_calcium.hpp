@@ -38,7 +38,7 @@ struct cfc {int cell; int fcount; int sindex;}; // other cell, connected face co
 class cCell_calcium {
 friend class cCellMesh;
 public:
-  cCell_calcium(std::string host_name, int my_rank, int acinus_rank);
+  cCell_calcium(std::string host_name, int my_rank, int acinus_rank, int lumen_rank);
   ~cCell_calcium();
   void run();
 
@@ -46,11 +46,13 @@ private:
   std::string id;
   std::string acinus_id;
   std::ofstream out, ca_file, ip3_file, cer_file;
-  int cell_number, acinus_rank;
+  int cell_number, acinus_rank, lumen_rank;
   cCellMesh* mesh;
   Eigen::SimplicialLDLT<Eigen::SparseMatrix<tCalcs>> solver;
   tCalcs p[PCOUNT]; // the model parameters array
+  // TODO: fluid flow parameters
   std::vector<cfc> cells; // vector of connected cells and face counts
+  std::vector<cfc> cells_fluid_flow; // vector of connected cells and face counts for fluid flow calculations
   tCalcs** exchange_send_buffer;  // buffers for exchanging values between connected cells
   tCalcs** exchange_recv_buffer;
   ArrayX1C exchange_load_ip;
@@ -68,6 +70,7 @@ private:
   void compute_exchange_values(int cell);
   void compute_exchange_load(int cell);
   void save_results(std::ofstream &data_file, int var);
+  void prep_fluid_flow();
 
   MatrixX1C solve_nd(tCalcs delta_time);
   MatrixX1C make_load(tCalcs delta_time, bool plc);

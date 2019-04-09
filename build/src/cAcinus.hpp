@@ -12,6 +12,7 @@
 #include <string>
 
 #include "global_defs.hpp"
+#include "cLumen.hpp"
 
 class cAcinus {
 public:
@@ -26,6 +27,7 @@ private:
   tCalcs p[PCOUNT]; // the calcium model parameters array
   //int my_rank, cell_rank, cell_count, lumen_rank;
   int my_rank, cell_rank, cell_count;
+  cLumen* lumen;
 
   tCalcs snd_recv(tCalcs t, tCalcs dt);
 };

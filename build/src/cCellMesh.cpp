@@ -186,7 +186,7 @@ void cCellMesh::identify_common_apical_triangles() {
   for (int i = 0; i < apical_triangles_count; i++) {
     if (not apical_mask[i]) {
       common_apical_triangles(count, tTri) = apical_triangles(i);
-      common_apical_triangles(count, oCell) = parent->cell_number;
+      common_apical_triangles(count, oCell) = parent->cell_number - 1;  // needs to be zero-indexed
       common_apical_triangles(count, oTri) = apical_triangles(i);
       count++;
     }
