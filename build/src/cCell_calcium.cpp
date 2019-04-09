@@ -110,9 +110,14 @@ void cCell_calcium::prep_fluid_flow() {
   cells_fluid_flow.push_back({other_cell, face_count, start_index}); // one more time
   out << std::endl;
 
-  // TODO: send to Lumen the "neigh" list and number of neighbours
-
-
+  // send to Lumen the number of neighbours and "neigh" list
+  int num_neigh = cells_fluid_flow.size();
+  MPI_CHECK(MPI_Send(&num_neigh, 1, MPI_INT, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
+  int neigh[num_neigh];
+  for (int i = 0; i < num_neigh; i++) {
+    neigh[i] = cells_fluid_flow[i].cell;
+  }
+  MPI_CHECK(MPI_Send(neigh, num_neigh, MPI_INT, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
 
 }
 

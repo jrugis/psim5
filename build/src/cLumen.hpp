@@ -28,6 +28,8 @@ private:
   int my_rank, cell_rank, cell_count;
   tCalcs na; // sodium
   tCalcs k;  // patasium 
+  std::vector<std::vector<int> > neigh;  // connectivity between cells
+  std::vector<std::vector<int> > neigh_clust;  // one sided connectivity between cells
 };
 
 #endif /* CLUMEN_ */

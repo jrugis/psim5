@@ -24,6 +24,7 @@
 #define MPI_NODES_ABORT -102
 #define ACINUS_CELL_TAG 400
 #define CELL_CELL_TAG 401
+#define LUMEN_CELL_TAG 402
 
 // mpi shutdown on error
 #define mpi_abort(err) \
