@@ -67,6 +67,13 @@ void cLumen::prep_cell_calcium() {
   }
 
   // TODO: we also need to send some parameters to them
+  // send them all to begin with, can be changed later
+  for (int i = 0; i < cell_count; i++) {
+    int dest = cell_rank + i;
+    MPI_CHECK(MPI_Send(p, FPCOUNT, MPI_DOUBLE, dest, LUMEN_CELL_TAG, MPI_COMM_WORLD));
+  }
+
+  // TODO: initial conditions for solver variables
   
 }
 

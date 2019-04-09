@@ -50,7 +50,7 @@ private:
   cCellMesh* mesh;
   Eigen::SimplicialLDLT<Eigen::SparseMatrix<tCalcs>> solver;
   tCalcs p[PCOUNT]; // the model parameters array
-  // TODO: fluid flow parameters
+  tCalcs fp[FPCOUNT]; // fluid flow parameters
   std::vector<cfc> cells; // vector of connected cells and face counts
   std::vector<cfc> cells_fluid_flow; // vector of connected cells and face counts for fluid flow calculations
   tCalcs** exchange_send_buffer;  // buffers for exchanging values between connected cells

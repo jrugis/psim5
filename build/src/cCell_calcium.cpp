@@ -119,6 +119,10 @@ void cCell_calcium::prep_fluid_flow() {
   }
   MPI_CHECK(MPI_Send(neigh, num_neigh, MPI_INT, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
 
+  // receive fluid flow parameters from Lumen
+  MPI_Status stat;
+  MPI_CHECK(MPI_Recv(fp, FPCOUNT, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD, &stat));
+
 }
 
 void cCell_calcium::init_solvec(){
