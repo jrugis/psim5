@@ -23,6 +23,7 @@ public:
 
 private:
   void prep_cell_calcium();
+
   std::string id;
   std::ofstream out;
   tCalcs p[FPCOUNT];  // the fluid flow parameters array
@@ -32,6 +33,7 @@ private:
   std::vector<std::vector<int> > neigh;  // connectivity between cells
   std::vector<std::vector<int> > neigh_clust;  // one sided connectivity between cells
   std::vector<std::vector<tCalcs> > apical_area_ratios;  // for each cell the ratios of areas of connected apical to total apical
+  std::vector<std::vector<tCalcs> > cells_exchange_buffer;  // buffer for receiving Ca input values from cells
 };
 
 #endif /* CLUMEN_ */

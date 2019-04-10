@@ -35,6 +35,7 @@ void cLumen::prep_cell_calcium() {
   // receive connectivity information from cells
   neigh.resize(cell_count);
   neigh_clust.resize(cell_count);
+  cells_exchange_buffer.resize(cell_count);
   for (int i = 0; i < cell_count; i++) {
     int num_neigh;
     int src = cell_rank + i;
@@ -48,6 +49,9 @@ void cLumen::prep_cell_calcium() {
         neigh_clust[i].push_back(n);
       }
     }
+
+    // initialise exchange buffer with correct size
+    cells_exchange_buffer[i].resize(num_neigh + 1);
   }
   
   // echo connectivity information
@@ -89,15 +93,18 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
   out << "<Lumen> iteration: t = " << t << " (dt = " << dt << ")" << std::endl;
 
   // receive Ca inputs
+  MPI_Request recv_requests[cell_count];
   for (int i = 0; i < cell_count; i++) {
-    int num_connected_cells = neigh[i].size();
-    double exchange_values[num_connected_cells + 1];
-    // TODO: make this Irecv and WAITANY
-    MPI_Status stat;
-    MPI_CHECK(MPI_Recv(exchange_values, num_connected_cells + 1, MPI_DOUBLE, cell_rank + i, LUMEN_CELL_TAG, MPI_COMM_WORLD, &stat));
+    MPI_CHECK(MPI_Irecv(cells_exchange_buffer[i].data(), cells_exchange_buffer[i].size(), MPI_DOUBLE,
+          cell_rank + i, LUMEN_CELL_TAG, MPI_COMM_WORLD, &recv_requests[i]));
+  }
 
-    // TODO: prep for solver
-
+  // wait for data to come in
+  for (int i = 0; i < cell_count; i++) {
+    MPI_Status status;
+    int recv_index;
+    MPI_CHECK(MPI_Waitany(cell_count, recv_requests, &recv_index, &status));
+    // got input from cell number: recv_index -- do something with it...
   }
 
   // TODO: solve
