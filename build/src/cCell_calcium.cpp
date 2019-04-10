@@ -53,8 +53,8 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank, int
   cells.push_back({other_cell, face_count, start_index}); // one more time
   out << std::endl;
 
-  // TODO: preparing fluid flow related stuff (communicator, cells_fluid_flow, params communicated from lumen, send connectivity if possible)
-  prep_fluid_flow();
+  // TODO: preparing fluid flow related stuff (communicator, cells_apical, params communicated from lumen, send connectivity if possible)
+  lumen_prep();
 
   // allocate ip3 exchange arrays once to save time (could be allocated and freed as needed if memory usage becomes a bottleneck)
   exchange_send_buffer = new tCalcs*[cells.size()];
@@ -87,8 +87,8 @@ cCell_calcium::~cCell_calcium() {
   delete [] exchange_recv_buffer;
 }
 
-void cCell_calcium::prep_fluid_flow() {
-  out << "<Cell_x> preparing fluid flow stuff..." << std::endl;
+void cCell_calcium::lumen_prep() {
+  out << "<Cell_x> fluid flow preparation with Lumen..." << std::endl;
 
   // common apical cells for fluid flow calculation
   out << "<Cell_x> common apical faces with cells:";
@@ -98,7 +98,7 @@ void cCell_calcium::prep_fluid_flow() {
   for(int r = 0; r < mesh->apical_triangles_count; r++) {
     if(mesh->common_apical_triangles(r, oCell) != other_cell) {
       if(other_cell != -1) {
-        cells_fluid_flow.push_back({other_cell, face_count, start_index});
+        cells_apical.push_back({other_cell, face_count, start_index});
         face_count = 0;
         start_index = r;
       }
@@ -107,21 +107,35 @@ void cCell_calcium::prep_fluid_flow() {
     }
     face_count++;
   }
-  cells_fluid_flow.push_back({other_cell, face_count, start_index}); // one more time
+  cells_apical.push_back({other_cell, face_count, start_index}); // one more time
   out << std::endl;
 
+  // compute areas of each connected apical region
+  for (std::vector<cfc>::size_type i = 0; i < cells_apical.size(); i++) {
+    int start_index = cells_apical[i].sindex;
+    int num_tris = cells_apical[i].fcount;
+    double area = 0.0;
+    for (int j = 0; j < num_tris; j++) {
+      int this_tri = mesh->common_apical_triangles(start_index + j, tTri);
+      area += mesh->surface_triangle_areas(this_tri);
+    }
+    cells_apical_areas.push_back(area);
+  }
+
   // send to Lumen the number of neighbours and "neigh" list
-  int num_neigh = cells_fluid_flow.size();
+  int num_neigh = cells_apical.size();
   MPI_CHECK(MPI_Send(&num_neigh, 1, MPI_INT, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
   int neigh[num_neigh];
   for (int i = 0; i < num_neigh; i++) {
-    neigh[i] = cells_fluid_flow[i].cell;
+    neigh[i] = cells_apical[i].cell;
   }
   MPI_CHECK(MPI_Send(neigh, num_neigh, MPI_INT, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
 
   // receive fluid flow parameters from Lumen
   MPI_Status stat;
   MPI_CHECK(MPI_Recv(fp, FPCOUNT, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD, &stat));
+
+  // TODO: send info about common apical region areas / ratios
 
 }
 
@@ -540,6 +554,72 @@ void cCell_calcium::exchange() {
   MPI_CHECK(MPI_Waitall(num_connected_cells, send_requests, send_statuses));
 }
 
+void cCell_calcium::lumen_exchange() {
+  int num_apical_connected_cells = cells_apical.size();
+  double exchange_values[num_apical_connected_cells + 1];
+
+  // % Ca2+ Activated K+ Channels open probability
+  // PK = sum((1./(1+(par.KCaKC./(Ca{2}{cell_no})).^par.eta2)).*par.Sb_k{cell_no})./par.Sb{cell_no};
+  // where:
+  //   Ca{2}{cell_no} is array of average Ca values of basal triangles in this cell
+  //   par.Sb_k{cell_no} is array of surface areas of basal triangles in this cell
+  //   par.Sb{cell_no} is total surface area of basal triangles in this cell
+  double PK = 0.0;
+  for (int i = 0; i < mesh->basal_triangles_count; i++) {
+    int this_tri = mesh->basal_triangles(i);
+    double area_tri = mesh->surface_triangle_areas(this_tri);
+
+    // average Ca at this triangle
+    double ca_tri = 0.0;
+    for (int j = 0; j < 3; j++) {
+      int vertex_index = mesh->surface_triangles(this_tri);
+      ca_tri += solvec(vertex_index);  // Ca is first
+    }
+    ca_tri *= third;
+
+    PK += (1.0 / (1.0 + pow(fp[KCaKC] / ca_tri, fp[eta2]))) * area_tri;
+  }
+  PK /= mesh->basal_triangles_area;
+  exchange_values[num_apical_connected_cells] = PK;
+
+  // % Ca2+ Activated Apical Cl- Channels
+  // PCl=1./(1+(par.KCaCC./Ca{1}{c_no,ngh}).^par.eta1);
+  // PrCl = sum(PCl.*par.com_tri_ap{c_no,ngh}(:,3))/par.Sa{c_no};
+  // where:
+  //   Ca{1}{c_no,ngh} is array of average Ca values at apical triangles shared between this cell and ngh
+  //   par.com_tri_ap{c_no,ngh}(:,3) is array of surface areas of apical triangles shared between this cell and ngh
+  //   par.Sa{c_no} is (probably) total surface area of apical triangles in this cell??
+  for (int i = 0; i < num_apical_connected_cells; i++) {
+    int n_tri = cells_apical[i].fcount;
+    int s_ind = cells_apical[i].sindex;
+
+    double PrCl = 0.0;
+    for (int j = 0; j < n_tri; j++) {
+      int this_tri = mesh->common_apical_triangles(s_ind + j, tTri);
+      double area_tri = mesh->surface_triangle_areas(this_tri);
+
+      // average Ca at this triangle
+      double ca_tri = 0.0;
+      for (int j = 0; j < 3; j++) {
+        int vertex_index = mesh->surface_triangles(this_tri);
+        ca_tri += solvec(vertex_index);  // Ca is first
+      }
+      ca_tri *= third;
+
+      PrCl += (1.0 / (1.0 + pow(fp[KCaCC] / ca_tri, fp[eta1]))) * area_tri;
+    }
+    PrCl /= cells_apical_areas[i];
+    exchange_values[i] = PrCl;
+  }
+
+  // send to Lumen
+  MPI_CHECK(MPI_Send(exchange_values, num_apical_connected_cells + 1, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
+
+  // TODO: receive volume back from Lumen
+
+
+}
+
 void cCell_calcium::run() {
   float msg[ACCOUNT]; // mpi message from and back to acinus
   tCalcs delta_time, current_time;
@@ -575,8 +655,7 @@ void cCell_calcium::run() {
     plc = ((current_time >= p[PLCsrt]) and (current_time <= p[PLCfin])); // PLC on or off?
 
     // TODO: Lumen exchange (send Ca info for fx_ap and fx_ba, receive back volume)
-
-
+    lumen_exchange();
 
     if(delta_time != prev_delta_time) { // recalculate A matrix if time step changed
       sparseA = sparseMass + (delta_time * sparseStiff);

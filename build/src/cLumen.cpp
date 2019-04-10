@@ -66,15 +66,40 @@ void cLumen::prep_cell_calcium() {
     out << std::endl;
   }
 
-  // TODO: we also need to send some parameters to them
-  // send them all to begin with, can be changed later
+  // send fluid flow parameters (all for now)
   for (int i = 0; i < cell_count; i++) {
     int dest = cell_rank + i;
     MPI_CHECK(MPI_Send(p, FPCOUNT, MPI_DOUBLE, dest, LUMEN_CELL_TAG, MPI_COMM_WORLD));
   }
 
+  // TODO: send info about common apical region areas / ratios
+  
+
+
   // TODO: initial conditions for solver variables
   
+}
+
+void cLumen::iterate(tCalcs t, tCalcs dt) {
+  out << "<Lumen> iteration: t = " << t << " (dt = " << dt << ")" << std::endl;
+
+  // receive Ca inputs
+  for (int i = 0; i < cell_count; i++) {
+    int num_connected_cells = neigh[i].size();
+    double exchange_values[num_connected_cells + 1];
+    // TODO: make this Irecv and WAITANY
+    MPI_Status stat;
+    MPI_CHECK(MPI_Recv(exchange_values, num_connected_cells + 1, MPI_DOUBLE, cell_rank + i, LUMEN_CELL_TAG, MPI_COMM_WORLD, &stat));
+
+    // TODO: prep for solver
+
+  }
+
+  // TODO: solve
+
+
+  // TODO: send volumes back to cells
+
 }
 
 void cLumen::run() {

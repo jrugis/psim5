@@ -29,7 +29,8 @@ private:
   int my_rank, cell_rank, cell_count;
   cLumen* lumen;
 
-  tCalcs snd_recv(tCalcs t, tCalcs dt);
+  void snd(tCalcs t, tCalcs dt);
+  tCalcs recv();
 };
 
 #endif /* CACINUS_H_ */

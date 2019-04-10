@@ -52,7 +52,8 @@ private:
   tCalcs p[PCOUNT]; // the model parameters array
   tCalcs fp[FPCOUNT]; // fluid flow parameters
   std::vector<cfc> cells; // vector of connected cells and face counts
-  std::vector<cfc> cells_fluid_flow; // vector of connected cells and face counts for fluid flow calculations
+  std::vector<cfc> cells_apical; // vector of connected cells and face counts for apical region (fluid flow calculations)
+  std::vector<tCalcs> cells_apical_areas; // areas of each connected apical region
   tCalcs** exchange_send_buffer;  // buffers for exchanging values between connected cells
   tCalcs** exchange_recv_buffer;
   ArrayX1C exchange_load_ip;
@@ -70,7 +71,8 @@ private:
   void compute_exchange_values(int cell);
   void compute_exchange_load(int cell);
   void save_results(std::ofstream &data_file, int var);
-  void prep_fluid_flow();
+  void lumen_prep();
+  void lumen_exchange();
 
   MatrixX1C solve_nd(tCalcs delta_time);
   MatrixX1C make_load(tCalcs delta_time, bool plc);

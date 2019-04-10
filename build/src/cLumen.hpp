@@ -19,6 +19,7 @@ public:
   cLumen(std::string host_name, int rank, int c_rank, int c_count);
   ~cLumen();
   void run();
+  void iterate(tCalcs t, tCalcs dt);
 
 private:
   void prep_cell_calcium();

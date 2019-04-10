@@ -37,9 +37,8 @@ cAcinus::~cAcinus() {
 }
 
 // NOTE: mpi send to all first, then receive from all
-tCalcs cAcinus::snd_recv(tCalcs t, tCalcs dt) {
+void cAcinus::snd(tCalcs t, tCalcs dt) {
   float msg[ACCOUNT]; 
-  MPI_Status stat;
 
   out << "<Acinus> t: " << t << std::endl;
   msg[dTime] = dt;
@@ -48,6 +47,12 @@ tCalcs cAcinus::snd_recv(tCalcs t, tCalcs dt) {
   for(int n = cell_rank; n < (cell_rank + cell_count); n++){
     MPI_CHECK(MPI_Send(&msg, ACCOUNT, MPI_FLOAT, n, ACINUS_CELL_TAG, MPI_COMM_WORLD));
   }
+}
+
+tCalcs cAcinus::recv() {
+  float msg[ACCOUNT];
+  MPI_Status stat;
+
   for(int n = cell_rank; n < (cell_rank + cell_count); n++){
     MPI_CHECK(MPI_Recv(&msg, ACCOUNT, MPI_FLOAT, n, ACINUS_CELL_TAG, MPI_COMM_WORLD, &stat));
   }
@@ -65,8 +70,9 @@ void cAcinus::run() {
   // simulation time stepping and synchronization
   clock_gettime(CLOCK_REALTIME, &start);
   while((p[totalT] - t) > 0.000001 ) {  // HARD CODED: assumes solver_dt always > 1us
-    // ... // invoke the fluid flow solver
-    error = snd_recv(t, solver_dt);  // invoke the calcium solver
+    snd(t, solver_dt);  // invoke the calcium solver
+    lumen->iterate(t, solver_dt);  // invoke the fluid flow solver
+    error = recv();  // wait for calcium solver to complete step
     if(error != 0.0) { // change time step?
       // ...
     } 
@@ -80,7 +86,8 @@ void cAcinus::run() {
 
   // instruct cells to finish
   solver_dt = 0.0;
-  snd_recv(t, solver_dt);
+  snd(t, solver_dt);
+  recv();
 }
 
 
