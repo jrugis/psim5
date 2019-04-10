@@ -53,7 +53,7 @@ private:
   tCalcs fp[FPCOUNT]; // fluid flow parameters
   std::vector<cfc> cells; // vector of connected cells and face counts
   std::vector<cfc> cells_apical; // vector of connected cells and face counts for apical region (fluid flow calculations)
-  std::vector<tCalcs> cells_apical_areas; // areas of each connected apical region
+  std::vector<tCalcs> cells_apical_area_ratios; // ratio of area of each connected apical region to total apical area
   tCalcs** exchange_send_buffer;  // buffers for exchanging values between connected cells
   tCalcs** exchange_recv_buffer;
   ArrayX1C exchange_load_ip;

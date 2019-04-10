@@ -72,9 +72,14 @@ void cLumen::prep_cell_calcium() {
     MPI_CHECK(MPI_Send(p, FPCOUNT, MPI_DOUBLE, dest, LUMEN_CELL_TAG, MPI_COMM_WORLD));
   }
 
-  // TODO: send info about common apical region areas / ratios
-  
-
+  // receive info about common apical region areas / ratios
+  apical_area_ratios.resize(cell_count);
+  for (int i = 0; i < cell_count; i++) {
+    int num_neigh = neigh[i].size();
+    apical_area_ratios[i].resize(num_neigh);
+    MPI_Status stat;
+    MPI_CHECK(MPI_Recv(apical_area_ratios[i].data(), num_neigh, MPI_DOUBLE, cell_rank + i, LUMEN_CELL_TAG, MPI_COMM_WORLD, &stat));
+  }
 
   // TODO: initial conditions for solver variables
   

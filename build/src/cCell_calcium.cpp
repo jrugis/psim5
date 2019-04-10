@@ -110,18 +110,6 @@ void cCell_calcium::lumen_prep() {
   cells_apical.push_back({other_cell, face_count, start_index}); // one more time
   out << std::endl;
 
-  // compute areas of each connected apical region
-  for (std::vector<cfc>::size_type i = 0; i < cells_apical.size(); i++) {
-    int start_index = cells_apical[i].sindex;
-    int num_tris = cells_apical[i].fcount;
-    double area = 0.0;
-    for (int j = 0; j < num_tris; j++) {
-      int this_tri = mesh->common_apical_triangles(start_index + j, tTri);
-      area += mesh->surface_triangle_areas(this_tri);
-    }
-    cells_apical_areas.push_back(area);
-  }
-
   // send to Lumen the number of neighbours and "neigh" list
   int num_neigh = cells_apical.size();
   MPI_CHECK(MPI_Send(&num_neigh, 1, MPI_INT, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
@@ -135,7 +123,19 @@ void cCell_calcium::lumen_prep() {
   MPI_Status stat;
   MPI_CHECK(MPI_Recv(fp, FPCOUNT, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD, &stat));
 
-  // TODO: send info about common apical region areas / ratios
+  // compute and send to Lumen ratios of area of each connected apical region to total apical area
+  for (std::vector<cfc>::size_type i = 0; i < cells_apical.size(); i++) {
+    int start_index = cells_apical[i].sindex;
+    int num_tris = cells_apical[i].fcount;
+    double area = 0.0;
+    for (int j = 0; j < num_tris; j++) {
+      int this_tri = mesh->common_apical_triangles(start_index + j, tTri);
+      area += mesh->surface_triangle_areas(this_tri);
+    }
+    cells_apical_area_ratios.push_back(area / mesh->apical_triangles_area);
+  }
+  MPI_CHECK(MPI_Send(cells_apical_area_ratios.data(), cells_apical_area_ratios.size(), MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD)); 
+
 
 }
 
@@ -608,7 +608,7 @@ void cCell_calcium::lumen_exchange() {
 
       PrCl += (1.0 / (1.0 + pow(fp[KCaCC] / ca_tri, fp[eta1]))) * area_tri;
     }
-    PrCl /= cells_apical_areas[i];
+    PrCl /= mesh->apical_triangles_area;
     exchange_values[i] = PrCl;
   }
 

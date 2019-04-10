@@ -31,6 +31,7 @@ private:
   tCalcs k;  // patasium 
   std::vector<std::vector<int> > neigh;  // connectivity between cells
   std::vector<std::vector<int> > neigh_clust;  // one sided connectivity between cells
+  std::vector<std::vector<tCalcs> > apical_area_ratios;  // for each cell the ratios of areas of connected apical to total apical
 };
 
 #endif /* CLUMEN_ */
