@@ -25,7 +25,6 @@ cCellMesh::cCellMesh(std::string mesh_name, cCell_calcium* p){
   parent = p;
   id = mesh_name;  
   get_mesh(id + ".bmsh");
-  compute_surface_triangle_areas();
   identify_common_apical_triangles();
 }
 
@@ -152,47 +151,11 @@ void cCellMesh::identify_common_apical_triangles() {
   }
 }
 
-void cCellMesh::compute_surface_triangle_areas() {
-  // NOTE: this could be a feature of the mesh (i.e. included in the mesh file)
-
-  // store areas of all surface triangles
-  surface_triangle_areas.resize(surface_triangles_count, Eigen::NoChange);
-  for (int i = 0; i < surface_triangles_count; i++) {
-    // vertices of this triangle
-    Eigen::Vector3d a = vertices.row(surface_triangles(i, 0));
-    Eigen::Vector3d b = vertices.row(surface_triangles(i, 1));
-    Eigen::Vector3d c = vertices.row(surface_triangles(i, 2));
-
-    // two sides of the triangle from a
-    Eigen::Vector3d ab = b - a;
-    Eigen::Vector3d ac = c - a;
-
-    // compute the area
-    surface_triangle_areas(i) = ab.cross(ac).norm() / 2.0;
-  }
-
-  // total area of apical triangles
-  apical_triangles_area = 0;
-  for (int i = 0; i < apical_triangles_count; i++) {
-    int index = apical_triangles(i);
-    apical_triangles_area += surface_triangle_areas(index);
-  }
-
-  // total area of basal triangles
-  basal_triangles_area = 0;
-  for (int i = 0; i < basal_triangles_count; i++) {
-    int index = basal_triangles(i);
-    basal_triangles_area += surface_triangle_areas(index);
-  }
-}
-
 void cCellMesh::print_info(){
   parent->out << "<CellMesh> vertices_count: " << vertices_count << std::endl;
   parent->out << "<CellMesh> tetrahedrons_count: " << tetrahedrons_count << std::endl;
   parent->out << "<CellMesh> surface_triangles_count: " << surface_triangles_count << std::endl;
   parent->out << "<CellMesh> apical_triangles_count: " << apical_triangles_count << std::endl;
-  parent->out << "<CellMesh> apical_triangles_area: " << apical_triangles_area << std::endl;
   parent->out << "<CellMesh> basal_triangles_count: " << basal_triangles_count << std::endl;
-  parent->out << "<CellMesh> basal_triangles_area: " << basal_triangles_area << std::endl;
   parent->out << "<CellMesh> common_triangles_count: " << common_triangles_count << std::endl;
 }

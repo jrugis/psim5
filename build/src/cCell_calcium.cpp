@@ -53,9 +53,6 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank, int
   cells.push_back({other_cell, face_count, start_index}); // one more time
   out << std::endl;
 
-  // TODO: preparing fluid flow related stuff (communicator, cells_apical, params communicated from lumen, send connectivity if possible)
-  lumen_prep();
-
   // allocate ip3 exchange arrays once to save time (could be allocated and freed as needed if memory usage becomes a bottleneck)
   exchange_send_buffer = new tCalcs*[cells.size()];
   exchange_recv_buffer = new tCalcs*[cells.size()];
@@ -71,6 +68,9 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank, int
   ca_file.open(id + "_ca.bin", std::ios::binary);
   ip3_file.open(id + "_ip3.bin", std::ios::binary);
   cer_file.open(id + "_cer.bin", std::ios::binary);
+
+  // communicating with lumen (send info about connectivity, receive params)
+  lumen_prep();
 }
 
 cCell_calcium::~cCell_calcium() {
@@ -130,9 +130,9 @@ void cCell_calcium::lumen_prep() {
     double area = 0.0;
     for (int j = 0; j < num_tris; j++) {
       int this_tri = mesh->common_apical_triangles(start_index + j, tTri);
-      area += mesh->surface_triangle_areas(this_tri);
+      area += surface_data(this_tri, AREA_s);
     }
-    cells_apical_area_ratios.push_back(area / mesh->apical_triangles_area);
+    cells_apical_area_ratios.push_back(area / surface_region_data[AREA_apical]);
   }
   MPI_CHECK(MPI_Send(cells_apical_area_ratios.data(), cells_apical_area_ratios.size(), MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD)); 
 
@@ -335,6 +335,19 @@ void cCell_calcium::make_matrices(){
       node_data(vi(i), BOOL_apical) = 1.0; // flag it as apical
     }
   }
+  // --------------------------------
+  // surface region data
+  // --------------------------------
+  surface_region_data[AREA_apical] = 0.0;
+  for (int n = 0; n < mesh->apical_triangles_count; n++) {
+    int this_tri = mesh->apical_triangles(n);
+    surface_region_data[AREA_apical] += surface_data(this_tri, AREA_s);
+  }
+  surface_region_data[AREA_basal] = 0.0;
+  for (int n = 0; n < mesh->basal_triangles_count; n++) {
+    int this_tri = mesh->basal_triangles(n);
+    surface_region_data[AREA_basal] += surface_data(this_tri, AREA_s);
+  }
 }
 
 Array1VC cCell_calcium::get_apical_reactions(tCalcs c, tCalcs ip, tCalcs ce, tCalcs h){
@@ -494,17 +507,17 @@ void cCell_calcium::compute_exchange_load(int cell) {
   // loop over common triangles and compute ip3 fluxes across them
   for (int i = 0; i < num_common_triangles; i++) {
     // we are assuming the ordering of common triangles between two cells is the same in both cells
-    int this_triangle = mesh->common_triangles(cells[cell].sindex + i, tTri);
+    int this_tri = mesh->common_triangles(cells[cell].sindex + i, tTri);
 
     // flux across this triangle
     tCalcs exchange_value = recvbuf[i] - sendbuf[i];
     exchange_value *= p[Fip];
-    exchange_value *= mesh->surface_triangle_areas(this_triangle);
+    exchange_value *= surface_data(this_tri, AREA_s);
 
     // converting from triangle back to vertices
     exchange_value *= third;
     for (int j = 0; j < 3; j++) {
-      int vertex_index = mesh->surface_triangles(this_triangle, j);
+      int vertex_index = mesh->surface_triangles(this_tri, j);
       exchange_load_ip(vertex_index) += exchange_value;
     }
   }
@@ -567,7 +580,7 @@ void cCell_calcium::lumen_exchange() {
   double PK = 0.0;
   for (int i = 0; i < mesh->basal_triangles_count; i++) {
     int this_tri = mesh->basal_triangles(i);
-    double area_tri = mesh->surface_triangle_areas(this_tri);
+    double area_tri = surface_data(this_tri, AREA_s);
 
     // average Ca at this triangle
     double ca_tri = 0.0;
@@ -596,7 +609,7 @@ void cCell_calcium::lumen_exchange() {
     double PrCl = 0.0;
     for (int j = 0; j < n_tri; j++) {
       int this_tri = mesh->common_apical_triangles(s_ind + j, tTri);
-      double area_tri = mesh->surface_triangle_areas(this_tri);
+      double area_tri = surface_data(this_tri, AREA_s);
 
       // average Ca at this triangle
       double ca_tri = 0.0;

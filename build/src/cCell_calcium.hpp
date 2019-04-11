@@ -26,6 +26,7 @@ class cCellMesh;
 enum model_element_values{VOL_e, RYR_e, PLC_e, MODELECOUNT};  // element volume and spatial factors
 enum model_surface_values{AREA_s, MODELSCOUNT};  // surface triangle area
 enum model_node_values{BOOL_apical, MODELNCOUNT}; // apical (boolean)
+enum model_surface_region_data{AREA_apical, AREA_basal, MODELSRCOUNT}; // apical and basal region surface areas
 
 // some convenience typedefs
 typedef Eigen::Array<tCalcs, Eigen::Dynamic, 1> ArrayX1C;
@@ -61,6 +62,7 @@ private:
   Eigen::Array<tCalcs, Eigen::Dynamic, MODELECOUNT> element_data;
   Eigen::Array<tCalcs, Eigen::Dynamic, MODELSCOUNT> surface_data;
   Eigen::Array<tCalcs, Eigen::Dynamic, MODELNCOUNT> node_data;
+  tCalcs surface_region_data[MODELSRCOUNT];
 
   MatrixX1C solvec, nd_solvec, prev_solvec, prev_nd_solvec; // solution vectors (for diffusing and non-diffusing)
   SparseMatrixTCalcs sparseA, sparseStiff, sparseMass; // A, stiffness and mass matrices
