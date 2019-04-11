@@ -24,7 +24,6 @@ cCellMesh::cCellMesh(std::string mesh_name, cCell_calcium* p){
   parent = p;
   id = mesh_name;  
   get_mesh(id + ".bmsh");
-  compute_surface_triangle_areas();
 }
 
 cCellMesh::~cCellMesh(){
@@ -103,24 +102,6 @@ void cCellMesh::get_mesh(std::string file_name){
     }
   }
   cell_file.close();
-}
-
-void cCellMesh::compute_surface_triangle_areas() {
-  surface_triangle_areas.resize(surface_triangles_count, Eigen::NoChange);
-
-  for (int i = 0; i < surface_triangles_count; i++) {
-    // vertices of this triangle
-    Eigen::Vector3d a = vertices.row(surface_triangles(i, 0));
-    Eigen::Vector3d b = vertices.row(surface_triangles(i, 1));
-    Eigen::Vector3d c = vertices.row(surface_triangles(i, 2));
-
-    // two sides of the triangle from a
-    Eigen::Vector3d ab = b - a;
-    Eigen::Vector3d ac = c - a;
-
-    // compute the area
-    surface_triangle_areas(i) = ab.cross(ac).norm() / 2.0;
-  }
 }
 
 void cCellMesh::print_info(){
