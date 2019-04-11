@@ -107,62 +107,20 @@ void cCellMesh::get_mesh(std::string file_name){
   cell_file.close();
 }
 
-bool cCellMesh::is_triangle_apical(int triangle, int& apical_index) {
-  // return True if the given triangle is apical, otherwise False
-  // this assumes the list of apical triangle indices is sorted from lowest to highest
-  // this has been verified for the current meshes
-
-  // binary search for triangle index in apical triangles array
-  int l = 0;
-  int r = apical_triangles_count - 1;
-  while (l <= r) {
-    // cut region in half
-    int m = (l + r) / 2;
-
-    // check if index present at midpoint
-    if (apical_triangles(m) == triangle) {
-      apical_index = m;
-      return true;
-    }
-
-    // if index greater, search in right half
-    if (apical_triangles(m) < triangle) {
-      l = m + 1;
-    }
-
-    // if index smaller, search in left half
-    else {
-      r = m - 1;
-    }
-  }
-
-//  // alternative to binary search
-//  for (int i = 0; i < apical_triangles_count; i++) {
-//    if (triangle == apical_triangles(i)) {
-//      // triangle is apical
-//      apical_index = i;
-//      return true;
-//    }
-//  }
-
-  // triangle is not apical
-  apical_index = -1;
-  return false;
-}
-
 void cCellMesh::identify_common_apical_triangles() {
   parent->out << "<CellMesh> building common apical triangles list" << std::endl;
-
   // NOTE: this could be a feature of the mesh (i.e. included in the mesh file)
 
-//    parent->out << "CHECKING APICAL SORTED...\n";
-//    for (int i = 1; i < apical_triangles_count; i++) {
-//        if (apical_triangles(i) < apical_triangles(i - 1)) {
-//            parent->out << "UNSORTED APICAL TRIANGLES\n";
-//        }
-//    }
-
   common_apical_triangles.resize(apical_triangles_count, Eigen::NoChange);
+
+  // mask of which triangles are apical
+  std::vector<int> is_apical(surface_triangles_count, 0);
+  std::vector<int> is_apical_index(surface_triangles_count, 0);
+  for (int i = 0; i < apical_triangles_count; i++) {
+    int this_tri = apical_triangles(i);
+    is_apical[this_tri] = 1;
+    is_apical_index[this_tri] = i;
+  }
 
   // record which apical triangles have been included from the common triangles list,
   // so can add any remaining apical triangles to the list
@@ -171,8 +129,9 @@ void cCellMesh::identify_common_apical_triangles() {
   // start with common triangles that are also apical triangles
   int count = 0;
   for (int i = 0; i < common_triangles_count; i++) {
-    int apical_index = -1;
-    if (is_triangle_apical(common_triangles(i, tTri), apical_index)) {
+    int this_tri = common_triangles(i, tTri);
+    if (is_apical[this_tri]) {
+      int apical_index = is_apical_index[this_tri];
       apical_mask[apical_index] = 1;
       for (int j = 0; j < CCONNCOUNT; j++) {
         common_apical_triangles(count, j) = common_triangles(i, j);

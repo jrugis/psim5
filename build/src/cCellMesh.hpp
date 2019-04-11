@@ -41,7 +41,6 @@ private:
   cCell_calcium* parent;
   void get_mesh(std::string file_name);
   void compute_surface_triangle_areas();
-  bool is_triangle_apical(int triangle, int& apical_index);
   void identify_common_apical_triangles();
 };
 
