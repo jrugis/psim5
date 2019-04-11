@@ -5,6 +5,7 @@
  *      Author: jrugis
  */
 
+#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -25,17 +26,56 @@ cLumen::cLumen(std::string host_name, int rank, int c_rank, int c_count) {
   utils::get_parameters(id, flowParms, 1, p, out);
 
   prep_cell_calcium();
+  initx();
 }
 
 cLumen::~cLumen() {
   out.close();
 }
 
+void cLumen::initx() {
+  // load initial conditions
+  // TODO: currently just loading the txt file, may need to be changed
+  out << "<Lumen> intialising variable matrices" << std::endl;
+
+  // number of variables of the system
+  ffvars = num_compartments * LUMENALVARS + cell_count * INTRAVARS;
+  x_ion.resize(ffvars, Eigen::NoChange);
+  out << "<Lumen> number of variables: " << ffvars << std::endl;
+  
+  std::ifstream icfile("IC_new.txt");
+  if (not icfile.is_open()) {
+    utils::fatal_error("could not open IC_new.txt for fluid flow initial conditions", out);
+  }
+
+  std::string line;
+  std::vector<tCalcs> ictmp;
+  for (int i = 0; i < ffvars; i++) {
+    if (not getline(icfile, line)) {
+      utils::fatal_error("not enough lines in IC_new.txt", out);
+    }
+    x_ion(i) = std::stod(line);
+    out << "<Lumen> IC value: " << x_ion(i) << std::endl;
+  }
+
+  icfile.close();
+
+  // set up variable arrays
+  intra.resize(cell_count, INTRAVARS);
+  nal.resize(cell_count, cell_count);
+  kl.resize(cell_count, cell_count);
+  cll.resize(cell_count, cell_count);
+}
+
+
 void cLumen::prep_cell_calcium() {
+  out << "<Lumen> exchanging info with cells" << std::endl;
+
   // receive connectivity information from cells
   neigh.resize(cell_count);
   neigh_clust.resize(cell_count);
   cells_exchange_buffer.resize(cell_count);
+  num_compartments = 0;
   for (int i = 0; i < cell_count; i++) {
     int num_neigh;
     int src = cell_rank + i;
@@ -47,6 +87,7 @@ void cLumen::prep_cell_calcium() {
       int n = neigh[i][j];
       if (n <= i) {
         neigh_clust[i].push_back(n);
+        num_compartments++;
       }
     }
 
@@ -69,6 +110,7 @@ void cLumen::prep_cell_calcium() {
     }
     out << std::endl;
   }
+  out << "<Lumen> number of lumenal compartments: " << num_compartments << std::endl;
 
   // send fluid flow parameters (all for now)
   for (int i = 0; i < cell_count; i++) {
@@ -84,9 +126,6 @@ void cLumen::prep_cell_calcium() {
     MPI_Status stat;
     MPI_CHECK(MPI_Recv(apical_area_ratios[i].data(), num_neigh, MPI_DOUBLE, cell_rank + i, LUMEN_CELL_TAG, MPI_COMM_WORLD, &stat));
   }
-
-  // TODO: initial conditions for solver variables
-  
 }
 
 void cLumen::iterate(tCalcs t, tCalcs dt) {
@@ -117,4 +156,30 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
 void cLumen::run() {
 }
 
+void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x) {
+  // arrange inputs (matlab var.m)
+  var(x);
 
+
+  // per cell:
+  //   fx_ba
+  //   fx_ap
+  //   ieq
+  //
+  // lum_adj
+  
+
+}
+
+void cLumen::var(MatrixX1C &x) {
+  // ordering of variables in the x vector is like:
+  //    `INTRAVARS` intracellular vars for cell 1
+  //    `INTRAVARS` intracellular vars for cell 2
+  //    ...
+  //    `INTRAVARS` intracellular vars for cell `cell_count`
+  //    `num_compartments` vars for lumenal sodium
+  //    `num_compartments` vars for lumenal potassium
+  //    `num_compartments` vars for lumenal chloride
+
+
+}
