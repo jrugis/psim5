@@ -136,7 +136,8 @@ void cCell_calcium::lumen_prep() {
   }
   MPI_CHECK(MPI_Send(cells_apical_area_ratios.data(), cells_apical_area_ratios.size(), MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD)); 
 
-
+  // send area of basal region
+  MPI_CHECK(MPI_Send(&surface_region_data[AREA_basal], 1, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
 }
 
 void cCell_calcium::init_solvec(){
@@ -592,7 +593,7 @@ void cCell_calcium::lumen_exchange() {
 
     PK += (1.0 / (1.0 + pow(fp[KCaKC] / ca_tri, fp[eta2]))) * area_tri;
   }
-  PK /= mesh->basal_triangles_area;
+  PK /= surface_region_data[AREA_basal];
   exchange_values[num_apical_connected_cells] = PK;
 
   // % Ca2+ Activated Apical Cl- Channels
@@ -621,7 +622,7 @@ void cCell_calcium::lumen_exchange() {
 
       PrCl += (1.0 / (1.0 + pow(fp[KCaCC] / ca_tri, fp[eta1]))) * area_tri;
     }
-    PrCl /= mesh->apical_triangles_area;
+    PrCl /= surface_region_data[AREA_apical];
     exchange_values[i] = PrCl;
   }
 

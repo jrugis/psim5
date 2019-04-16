@@ -24,7 +24,6 @@ public:
   int vertices_count, tetrahedrons_count;
   int surface_triangles_count, apical_triangles_count, basal_triangles_count;
   int common_triangles_count;
-  tCalcs apical_triangles_area, basal_triangles_area;
   Eigen::Array<tCoord, Eigen::Dynamic, 3, Eigen::RowMajorBit> vertices; // 3x coordinate
   Eigen::Array<int, Eigen::Dynamic, 3, Eigen::RowMajorBit> surface_triangles; // 3x vertex
   Eigen::Array<int, Eigen::Dynamic, 4, Eigen::RowMajorBit> tetrahedrons; // 4x vertex

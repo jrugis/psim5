@@ -14,8 +14,10 @@
 
 #include "global_defs.hpp"
 
-#define INTRAVARS 8
 #define LUMENALVARS 3
+
+enum intracellular_variables{Vol, Naplus, Kplus, Clminus, HCO3minus, Hplus, Va, Vb, INTRAVARS};
+enum basolateral_fluxes{Qb, JNaK, JNkcc1, JAe4, JNhe1, JBB, JK, Ii, Jwater, BASOFLUXCOUNT};
 
 class cLumen {
 public:
@@ -29,6 +31,9 @@ private:
   void prep_cell_calcium();
   void fluid_flow_function(tCalcs t, MatrixX1C &x);
   void var(MatrixX1C &x);
+  void fx_ba();
+  void fx_ap();
+  void ieq();
 
   std::string id;
   std::ofstream out;
@@ -41,10 +46,14 @@ private:
   std::vector<std::vector<int> > neigh;  // connectivity between cells
   std::vector<std::vector<int> > neigh_clust;  // one sided connectivity between cells
   std::vector<std::vector<tCalcs> > apical_area_ratios;  // for each cell the ratios of areas of connected apical to total apical
+  std::vector<tCalcs> basal_areas;  // for each cell the total area of the basal triangles
   std::vector<std::vector<tCalcs> > cells_exchange_buffer;  // buffer for receiving Ca input values from cells
   MatrixX1C x_ion;  // solution vector
   MatrixXXC intra;  // intra cellular variables for all cells
-  MatrixXXC nal, kl, cll;  // lumenal variable arrays
+  MatrixXXC Nal, Kl, Cll;  // lumenal variable arrays
+  Eigen::Matrix<tCalcs, Eigen::Dynamic, BASOFLUXCOUNT> Jb;  // basolateral fluxes
+  MatrixXXC JCl, JtNa, JtK, Qa, Qtot;  // apical and tight junctional fluxes
+  MatrixX1C JCL;
 };
 
 #endif /* CLUMEN_ */

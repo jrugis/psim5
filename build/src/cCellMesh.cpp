@@ -21,7 +21,6 @@ cCellMesh::cCellMesh(std::string mesh_name, cCell_calcium* p){
   vertices_count = tetrahedrons_count = 0;
   surface_triangles_count = apical_triangles_count = basal_triangles_count = 0;
   common_triangles_count = 0;
-  apical_triangles_area = basal_triangles_area = 0.0;
   parent = p;
   id = mesh_name;  
   get_mesh(id + ".bmsh");
