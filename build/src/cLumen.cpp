@@ -42,6 +42,7 @@ void cLumen::initx() {
   // number of variables of the system
   ffvars = num_compartments * LUMENALVARS + cell_count * INTRAVARS;
   x_ion.resize(ffvars, Eigen::NoChange);
+  dx_ion.resize(ffvars, Eigen::NoChange);
   out << "<Lumen> number of variables: " << ffvars << std::endl;
   
   std::ifstream icfile("IC_new.txt");
@@ -190,9 +191,21 @@ void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x) {
   Jb.col(Jwater) = Jb.col(Qb) - Qa.rowwise().sum();
 
   // Set the intracellular concentration differential equations
-//  ieq();
+  ieq();
 
 //  lum_adj();
+}
+
+void cLumen::ieq() {
+  // This function calculates the differential equations of the intracellular
+  // ionic concentrations and the membrane potentials of any given cell
+  // using the int matrix of seven columns
+  // (that represent each cell) and 8 rows (representing concentrations and PM
+  // potentials along with cell volume). 
+  // The order is in the intracellular_variables enum.
+
+
+
 }
 
 void cLumen::fx_ba() {
