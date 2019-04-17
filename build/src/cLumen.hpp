@@ -28,12 +28,14 @@ public:
 
 private:
   void initx();
+  void load_adjacency_matrix();
   void prep_cell_calcium();
   void fluid_flow_function(tCalcs t, MatrixX1C &x);
   void var(MatrixX1C &x);
   void fx_ba();
   void fx_ap();
   void ieq();
+  void lum_adj();
 
   std::string id;
   std::ofstream out;
@@ -55,6 +57,7 @@ private:
   Eigen::Matrix<tCalcs, Eigen::Dynamic, BASOFLUXCOUNT> Jb;  // basolateral fluxes
   MatrixXXC JCl, JtNa, JtK, Qa, Qtot;  // apical and tight junctional fluxes
   MatrixX1C JCL;
+  Eigen::MatrixXi adj;  // adjacency matrix
 };
 
 #endif /* CLUMEN_ */

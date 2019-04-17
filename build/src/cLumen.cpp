@@ -8,7 +8,11 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <vector>
 #include <cmath>
+
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/trim.hpp>
 
 #include "global_defs.hpp"
 #include "utils.hpp"
@@ -27,6 +31,7 @@ cLumen::cLumen(std::string host_name, int rank, int c_rank, int c_count) {
   utils::get_parameters(id, flowParms, 1, p, out);
 
   prep_cell_calcium();
+  load_adjacency_matrix();
   initx();
 }
 
@@ -146,6 +151,43 @@ void cLumen::prep_cell_calcium() {
   }
 }
 
+void cLumen::load_adjacency_matrix() {
+  out << "<Lumen> loading adjacency matrix" << std::endl;
+
+  adj.resize(num_compartments, num_compartments);
+
+  std::ifstream adj_file("Adjs.txt");
+  if (not adj_file.is_open()) {
+    utils::fatal_error("could not open Adjs.txt for adjacency matrix", out);
+  }
+
+  std::string line;
+  std::vector<tCalcs> ictmp;
+  for (int i = 0; i < num_compartments; i++) {
+    if (getline(adj_file, line)) {
+      line = boost::trim_right_copy(line);  // remove trailing whitespace
+      std::vector<std::string> tokens; 
+      boost::split(tokens, line, boost::is_any_of(" "), boost::token_compress_on);
+      if (tokens.size() == num_compartments) {
+        for (int j = 0; j < num_compartments; j++) {
+          adj(i, j) = std::stoi(tokens[j]);
+        }
+      }
+      else {
+        utils::fatal_error("wrong number of elements on line " + std::to_string(i + 1), out);
+      }
+    }
+    else {
+      utils::fatal_error("not enough lines in Adjs.txt", out);
+    }
+  }
+
+  adj_file.close();
+
+  out << "<Lumen< Adjacency matrix:" << std::endl;
+  out << adj << std::endl;
+}
+
 void cLumen::iterate(tCalcs t, tCalcs dt) {
   out << "<Lumen> iteration: t = " << t << " (dt = " << dt << ")" << std::endl;
 
@@ -177,6 +219,8 @@ void cLumen::run() {
 }
 
 void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x) {
+  dx_ion.setZero();
+
   // arrange inputs (matlab var.m)
   var(x);
   
@@ -193,7 +237,17 @@ void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x) {
   // Set the intracellular concentration differential equations
   ieq();
 
-//  lum_adj();
+  // Set the luminal concentration equations
+  // Use adjacency matrix for connectivity of the lumen.
+  lum_adj();
+}
+
+void cLumen::lum_adj() {
+  // This function uses the adjacency matrix to calculate the luminal structure
+  // equations. 
+  // This is a dirty function and should be re-written.
+
+
 }
 
 void cLumen::ieq() {
@@ -204,8 +258,33 @@ void cLumen::ieq() {
   // potentials along with cell volume). 
   // The order is in the intracellular_variables enum.
 
+  int index = 0;
+  for (int c_no = 0; c_no < cell_count; c_no++) {
+    // enum basolateral_fluxes{Qb, JNaK, JNkcc1, JAe4, JNhe1, JBB, JK, Ii, Jwater, BASOFLUXCOUNT};
+    // enum intracellular_variables{Vol, Naplus, Kplus, Clminus, HCO3minus, Hplus, Va, Vb, INTRAVARS};
 
+    // dw/dt
+    dx_ion(index++) = Jb(c_no, Jwater);
 
+    // d[Na+]i/dt
+    dx_ion(index++) = (Jb(c_no, JNkcc1) - 3.0 * Jb(c_no, JNaK) + Jb(c_no, JNhe1) - Jb(c_no, JAe4) - 
+        Jb(c_no, Jwater) * intra(c_no, Naplus)) / intra(c_no, Vol);
+
+    // d[Cl-]i/dt
+    dx_ion(index++) = (2.0 * Jb(c_no, JNkcc1) + Jb(c_no, JAe4) + JCL(c_no) - Jb(c_no, Jwater) * intra(c_no, Clminus)) / intra(c_no, Vol);
+
+    // d[HCO3-]i/dt
+    dx_ion(index++) = (Jb(c_no, JBB) - 2.0 * Jb(c_no, JAe4) - Jb(c_no, Jwater) * intra(c_no, HCO3minus)) / intra(c_no, Vol);
+
+    // d[H+]i/dt
+    dx_ion(index++) = (Jb(c_no, JBB) - Jb(c_no, JNhe1) - Jb(c_no, Jwater) * intra(c_no, Hplus)) / intra(c_no, Vol);
+
+    // dVa/dt
+    dx_ion(index++) = - JCL(c_no) - (JtNa.row(c_no).sum() + JtK.row(c_no).sum());
+
+    // dVb/dt
+    dx_ion(index++) = - Jb(c_no, JNaK) - Jb(c_no, JK) + JtNa.row(c_no).sum() + JtK.row(c_no).sum();
+  }
 }
 
 void cLumen::fx_ba() {
