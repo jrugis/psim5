@@ -109,8 +109,9 @@ enum fluid_flow_parameters{ \
   G4, KCl, KB, \
   GB, kn, kp, \
   pHl, pHi, pHe, HCO3l, CO20, Ul, Cle, Nae, \
-  Ke, HCO3e, CO2e, Hl, CO2l, Hy, \
+  Ke, HCO3e, CO2e, CO2l, Hy, \
   La, Lb, Lt, \
+  He, Ie, Hye, St, wl, \
   FPCOUNT};
   
 //************************************************************************ 
@@ -118,7 +119,7 @@ enum fluid_flow_parameters{ \
 #define R 8.314462100000000
 #define T 310
 #define F 9.645833650000000e4
-#define RTF 26.721207772435513
+#define RTF 26.713730236096550
 
 //************************************************************************ 
 // other constants

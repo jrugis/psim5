@@ -54,10 +54,11 @@ void utils::get_parameters(const std::string file_id, int ptype, int cell_num, t
     "G4", "KCl", "KB", \
     "GB", "kn", "kp", \
     "pHl", "pHi", "pHe", "HCO3l", "CO20", "Ul", "Cle", "Nae", \
-    "Ke", "HCO3e", "CO2e", "Hl", "CO2l", "Hy", \
-    "La", "Lb", "Lt"}; // NOTE: these must match up with the enums in global_defs.hpp !!!
+    "Ke", "HCO3e", "CO2e", "CO2l", "Hy", \
+    "La", "Lb", "Lt", \
+    "He", "Ie", "Hye", "St", "wl"}; // NOTE: these must match up with the enums in global_defs.hpp !!!
 
-  if(ptype == calciumParms) {pnames = cpnames; pcount = PCOUNT;} // calcium simuilation?
+  if(ptype == calciumParms) {pnames = cpnames; pcount = PCOUNT;} // calcium simulation?
   if(ptype == flowParms) {pnames = fpnames; pcount = FPCOUNT;}   // fluid flow?
 
   if (not model_file.is_open()) {
