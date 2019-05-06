@@ -19,6 +19,8 @@
 enum intracellular_variables{Vol, Naplus, Kplus, Clminus, HCO3minus, Hplus, Va, Vb, INTRAVARS};
 enum basolateral_fluxes{Qb, JNaK, JNkcc1, JAe4, JNhe1, JBB, JK, Ii, Jwater, BASOFLUXCOUNT};
 
+typedef Eigen::Array<tCalcs, Eigen::Dynamic, Eigen::Dynamic> ArrayXXC;
+
 class cLumen {
 public:
   cLumen(std::string host_name, int rank, int c_rank, int c_count);
@@ -36,6 +38,8 @@ private:
   void fx_ap();
   void ieq();
   void lum_adj();
+  void matrix_add_upper_to_lower(MatrixXXC &mat);
+  void matrix_move_upper_to_lower(MatrixXXC &mat);
 
   std::string id;
   std::ofstream out;
@@ -57,7 +61,10 @@ private:
   Eigen::Matrix<tCalcs, Eigen::Dynamic, BASOFLUXCOUNT> Jb;  // basolateral fluxes
   MatrixXXC JCl, JtNa, JtK, Qa, Qtot;  // apical and tight junctional fluxes
   MatrixX1C JCL;
-  Eigen::MatrixXi adj;  // adjacency matrix
+  ArrayX1C JtNad_tmp, JtKd_tmp, JCld_tmp, Qtotd_tmp, Nald_tmp, Kld_tmp, Clld_tmp;  // luminal structure equations
+  ArrayXXC JtNad, JtKd, JCld, Qtotd, Nald, Kld, Clld;  // luminal structure equations
+  ArrayXXC QwNa, QwK, QwCl;  // water/ion influx
+  Eigen::ArrayXXi adj;  // adjacency matrix
 };
 
 #endif /* CLUMEN_ */

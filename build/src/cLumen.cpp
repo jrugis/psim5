@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <utility>
 
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/trim.hpp>
@@ -81,6 +82,26 @@ void cLumen::initx() {
   Qa.resize(cell_count, cell_count);
   Qtot.resize(cell_count, cell_count);
   JCL.resize(cell_count, Eigen::NoChange);
+
+  JtNad_tmp.resize(num_compartments, Eigen::NoChange);
+  JtKd_tmp.resize(num_compartments, Eigen::NoChange);
+  JCld_tmp.resize(num_compartments, Eigen::NoChange);
+  Qtotd_tmp.resize(num_compartments, Eigen::NoChange);
+  Nald_tmp.resize(num_compartments, Eigen::NoChange);
+  Kld_tmp.resize(num_compartments, Eigen::NoChange);
+  Clld_tmp.resize(num_compartments, Eigen::NoChange);
+
+  JtNad.resize(num_compartments, num_compartments);
+  JtKd.resize(num_compartments, num_compartments);
+  JCld.resize(num_compartments, num_compartments);
+  Qtotd.resize(num_compartments, num_compartments);
+  Nald.resize(num_compartments, num_compartments);
+  Kld.resize(num_compartments, num_compartments);
+  Clld.resize(num_compartments, num_compartments);
+
+  QwNa.resize(num_compartments, num_compartments);
+  QwK.resize(num_compartments, num_compartments);
+  QwCl.resize(num_compartments, num_compartments);
 }
 
 
@@ -168,7 +189,7 @@ void cLumen::load_adjacency_matrix() {
       line = boost::trim_right_copy(line);  // remove trailing whitespace
       std::vector<std::string> tokens; 
       boost::split(tokens, line, boost::is_any_of(" "), boost::token_compress_on);
-      if (tokens.size() == num_compartments) {
+      if (static_cast<int>(tokens.size()) == num_compartments) {
         for (int j = 0; j < num_compartments; j++) {
           adj(i, j) = std::stoi(tokens[j]);
         }
@@ -237,17 +258,124 @@ void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x) {
   // Set the intracellular concentration differential equations
   ieq();
 
-  // Set the luminal concentration equations
+  // Set the lumenal concentration equations
   // Use adjacency matrix for connectivity of the lumen.
   lum_adj();
+
+  // solution
+  int index = cell_count * INTRAVARS;
+  for (int i = 0; i < num_compartments; i++) {
+    dx_ion(index++) = JtNad(i, i) + QwNa.col(i).sum() - Qtotd.col(i).sum() * Nald(i, i);
+  }
+  for (int i = 0; i < num_compartments; i++) {
+    dx_ion(index++) = JtKd(i, i) + QwK.col(i).sum() - Qtotd.col(i).sum() * Kld(i, i);
+  }
+  for (int i = 0; i < num_compartments; i++) {
+    dx_ion(index++) = JCld(i, i) + QwCl.col(i).sum() - Qtotd.col(i).sum() * Clld(i, i);
+  }
+}
+
+void cLumen::matrix_add_upper_to_lower(MatrixXXC &mat) {
+  // mat = (mat - triu(mat)) + triu(mat)';
+  int m = mat.rows();
+  int n = mat.cols();
+  if (m != n) {
+    utils::fatal_error("cLumen::matrix_add_upper_to_lower only works for square matrices", out);
+  }
+  else {
+    for (int i = 0; i < m; i++) {
+      for (int j = i + 1; j < n; j++) {
+        mat(j, i) += mat(i, j);
+        mat(i, j) = 0;
+      }
+    }
+  }
+}
+
+void cLumen::matrix_move_upper_to_lower(MatrixXXC &mat) {
+  // mat = triu(mat)';
+  int m = mat.rows();
+  int n = mat.cols();
+  if (m != n) {
+    utils::fatal_error("cLumen::matrix_move_upper_to_lower only works for square matrices", out);
+  }
+  else {
+    for (int i = 0; i < m; i++) {
+      for (int j = i + 1; j < n; j++) {
+        mat(j, i) = mat(i, j);
+      }
+    }
+  }     
 }
 
 void cLumen::lum_adj() {
-  // This function uses the adjacency matrix to calculate the luminal structure
+  // This function uses the adjacency matrix to calculate the lumenal structure
   // equations. 
   // This is a dirty function and should be re-written.
 
+  // add upper to lower triangles, zeroing upper
+  matrix_add_upper_to_lower(Qtot);
+  matrix_add_upper_to_lower(JtNa);
+  matrix_add_upper_to_lower(JtK);
+  matrix_add_upper_to_lower(JCl);
 
+  // move upper triangle to lower triangle
+  matrix_move_upper_to_lower(Nal);
+  matrix_move_upper_to_lower(Kl);
+  matrix_move_upper_to_lower(Cll);
+
+  // find locations of non-zero elements in Qtot transposed
+  // TODO: why transposed if we switch ordering later??
+  std::vector<std::pair<int, int> > nonzeros;
+  for (int i = 0; i < Qtot.rows(); i++) {
+    for (int j = 0; j < Qtot.cols(); j++) {
+      if (Qtot(i, j) != 0) {
+        nonzeros.push_back(std::make_pair(i, j));
+      }
+    }
+  }
+
+  if (static_cast<int>(nonzeros.size()) != num_compartments) {
+    utils::fatal_error("mismatch between number of nonzeros and number of lumenal compartments", out);
+  }
+
+  for (int i = 0; i < num_compartments; i++) {
+    int row = nonzeros[i].first;
+    int col = nonzeros[i].second;
+    Nald_tmp(i) = Nal(row, col);
+    Kld_tmp(i) = Kl(row, col);
+    Clld_tmp(i) = Cll(row, col);
+    Qtotd_tmp(i) = Qtot(row, col);
+    JtNad_tmp(i) = JtNa(row, col);
+    JtKd_tmp(i) = JtK(row, col);
+    JCld_tmp(i) = JCl(row, col);
+  }
+
+  // multiply by adjacency matrix
+  out << "DEBUG SIZES:" << std::endl;
+  out << "  adj: " << adj.rows() << " x " << adj.cols() << std::endl;
+  out << "  Nal: " << Nal.rows() << " x " << Nal.cols() << std::endl;
+  out << "  Nald: " << Nald.rows() << " x " << Nald.cols() << std::endl;
+
+  for (int i = 0; i < num_compartments; i++) {
+    Nald.col(i) = adj.col(i).cast<tCalcs>() * Nald_tmp;
+    Kld.col(i) = adj.col(i).cast<tCalcs>() * Kld_tmp;
+    Clld.col(i) = adj.col(i).cast<tCalcs>() * Clld_tmp;
+    Qtotd.col(i) = adj.col(i).cast<tCalcs>() * Qtotd_tmp;
+    JtNad.col(i) = adj.col(i).cast<tCalcs>() * JtNad_tmp;
+    JtKd.col(i) = adj.col(i).cast<tCalcs>() * JtKd_tmp;
+    JCld.col(i) = adj.col(i).cast<tCalcs>() * JCld_tmp;
+  }
+
+  // precalculate the water/ion influx  
+  QwNa = Qtotd * Nald;
+  QwK = Qtotd * Kld;
+  QwCl = Qtotd * Clld;
+  for (int i = 0; i < num_compartments; i++) {
+    QwNa(i, i) = 0.0;
+    QwK(i, i) = 0.0;
+    QwCl(i, i) = 0.0;
+  }
 }
 
 void cLumen::ieq() {
@@ -291,6 +419,8 @@ void cLumen::fx_ba() {
   // This function takes as an input the intracellular variables of the cell model and the Ca
   // in order to calculate the membrane ionic fluxes, and the flow rate into the cell, at the
   // basolateral side of the cells.
+
+  Jb.setZero();
 
   // loop over the cells
   for (int cell_no = 0; cell_no < cell_count; cell_no++) {
@@ -336,6 +466,12 @@ void cLumen::fx_ap() {
   // of the cell model and the Ca in order to calculate the apical 
   // mebrane ionic fluxes, and the flow rate out and into the lumen, 
   // of any particular cell. 
+
+  JCl.setZero();
+  JtNa.setZero();
+  JtK.setZero();
+  Qa.setZero();
+  Qtot.setZero();
 
   // loop over cells
   for (int c_no = 0; c_no < cell_count; c_no++) {

@@ -29,7 +29,6 @@ enum model_node_values{BOOL_apical, MODELNCOUNT}; // apical (boolean)
 enum model_surface_region_data{AREA_apical, AREA_basal, MODELSRCOUNT}; // apical and basal region surface areas
 
 // some convenience typedefs
-typedef Eigen::Array<tCalcs, Eigen::Dynamic, 1> ArrayX1C;
 typedef Eigen::Array<tCalcs, 1, DIFVARS> Array1VC;
 typedef Eigen::Array<tCalcs, REF_MASS_SIZE, REF_MASS_SIZE> ArrayRefMass;
 typedef Eigen::Triplet<tCalcs> Triplet;

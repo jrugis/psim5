@@ -73,6 +73,7 @@ typedef double tCalcs;
 
 //************************************************************************ 
 // some convenience typedefs
+typedef Eigen::Array<tCalcs, Eigen::Dynamic, 1> ArrayX1C;
 typedef Eigen::Matrix<tCalcs, Eigen::Dynamic, Eigen::Dynamic> MatrixXXC;
 typedef Eigen::Matrix<tCalcs, Eigen::Dynamic, 1> MatrixX1C;
 typedef Eigen::SparseMatrix<tCalcs> SparseMatrixTCalcs;
