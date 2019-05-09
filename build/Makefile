@@ -23,7 +23,7 @@ CPP = mpicxx
 #CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -pg 
 
 ## optimised
-CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -march=native -mtune=native -Wall
+CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -march=native -mtune=native -Wall -g
 
 ###########################################################################################
 ## program
@@ -34,10 +34,13 @@ CPP_INCLUDES = -I/usr/include
 
 EXE = ../run/psim5
 #OBJS = main.o utils.o cAcinus.o cLumen.o cCVodes.o cCell_flow.o cCell_calcium.o cCellMesh.o
-OBJS = main.o utils.o cAcinus.o cCell_calcium.o cCellMesh.o cLumen.o
+OBJS = main.o utils.o cAcinus.o cCell_calcium.o cCellMesh.o cLumen.o LSODA.o
 SRC = ./src
 
 all: $(EXE)
+
+LSODA.o: $(SRC)/libsoda/LSODA.cpp $(SRC)/libsoda/LSODA.h $(SRC)/libsoda/helper.h
+	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
 main.o: $(SRC)/main.cpp $(SRC)/global_defs.hpp $(SRC)/cAcinus.hpp $(SRC)/cCell_calcium.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<

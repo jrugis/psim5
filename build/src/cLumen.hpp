@@ -27,16 +27,17 @@ public:
   ~cLumen();
   void run();
   void iterate(tCalcs t, tCalcs dt);
+  void fluid_flow_function(tCalcs t, MatrixX1C &x, MatrixX1C &xdot);
+  int ffvars;  // number of fluid flow variables
 
 private:
   void initx();
   void load_adjacency_matrix();
   void prep_cell_calcium();
-  void fluid_flow_function(tCalcs t, MatrixX1C &x);
   void var(MatrixX1C &x);
   void fx_ba();
   void fx_ap();
-  void ieq();
+  void ieq(MatrixX1C &xdot);
   void lum_adj();
   void matrix_add_upper_to_lower(MatrixXXC &mat);
   void matrix_move_upper_to_lower(MatrixXXC &mat);
@@ -46,7 +47,6 @@ private:
   tCalcs p[FPCOUNT];  // the fluid flow parameters array
   int my_rank, cell_rank, cell_count;
   int num_compartments;  // number of lumenal compartments (from meshes)
-  int ffvars;  // number of fluid flow variables
   tCalcs na; // sodium
   tCalcs k;  // patasium 
   std::vector<std::vector<int> > neigh;  // connectivity between cells

@@ -18,6 +18,28 @@
 #include "global_defs.hpp"
 #include "utils.hpp"
 #include "cLumen.hpp"
+#include "libsoda/LSODA.h"
+
+
+static void fffunc(tCalcs t, tCalcs* y, tCalcs* ydot, void *data) {
+  cLumen* pt_cLumen = static_cast<cLumen *>(data);
+  int ffvars = pt_cLumen->ffvars;
+
+  MatrixX1C ymat;
+  ymat.resize(ffvars, Eigen::NoChange);
+  for (int i = 0; i < ffvars; i++) {
+    ymat(i) = y[i];
+  }
+
+  MatrixX1C ydotmat;
+  ydotmat.resize(ffvars, Eigen::NoChange);
+  
+  pt_cLumen->fluid_flow_function(t, ymat, ydotmat);
+  
+  for (int i = 0; i < ffvars; i++) {
+    ydot[i] = ydotmat(i);
+  }
+}
 
 cLumen::cLumen(std::string host_name, int rank, int c_rank, int c_count) {
   my_rank = rank;
@@ -227,10 +249,44 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
     // got input from cell number: recv_index -- do something with it...
   }
 
-  // TODO: solve
-  // just call fluid flow function for testing now
-  fluid_flow_function(t, x_ion);
+  // solve
+//  std::vector<tCalcs> yin(ffvars), yout;
+//  for (int i = 0; i < ffvars; i++) {
+//    yin[i] = x_ion(i);
+//  }
+//
+//  out << "Initial volumes: ";
+//  for (int i = 0; i < cell_count; i++) {
+//    out << x_ion(i * INTRAVARS + Vol);
+//    out << " ";
+//  }
+//  out << std::endl;
+//
+//  int istate = 1;
+//  LSODA lsoda;
+//  lsoda.lsoda_update(fffunc, ffvars, yin, yout, &t, t + dt, &istate, static_cast<void *>(this), 1e-4, 1e-8);
+//  if (istate < 1) {
+//    utils::fatal_error("lsoda faied to compute the solution", out);
+//  }
+//
+//  for (int i = 0; i < ffvars; i++) {
+//    x_ion(i) = yout[i + 1];
+//  }
+//
+//  out << "Final volumes: ";
+//  for (int i = 0; i < cell_count; i++) {
+//    out << x_ion(i * INTRAVARS + Vol);
+//    out << " ";
+//  }
+//  out << std::endl;
 
+  // just call fluid flow function for testing now
+  MatrixX1C xdot;
+  xdot.resize(ffvars, Eigen::NoChange);
+  fluid_flow_function(t, x_ion, xdot);
+  for (int i = 0; i < ffvars; i++) {
+    out << "x, xdot " << i << ": " << x_ion(i) << ", " << xdot(i) << std::endl;
+  }
 
   // TODO: send volumes back to cells
 
@@ -239,7 +295,7 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
 void cLumen::run() {
 }
 
-void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x) {
+void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x, MatrixX1C &xdot) {
   dx_ion.setZero();
 
   // arrange inputs (matlab var.m)
@@ -256,7 +312,7 @@ void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x) {
   Jb.col(Jwater) = Jb.col(Qb) - Qa.rowwise().sum();
 
   // Set the intracellular concentration differential equations
-  ieq();
+  ieq(xdot);
 
   // Set the lumenal concentration equations
   // Use adjacency matrix for connectivity of the lumen.
@@ -265,13 +321,13 @@ void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x) {
   // solution
   int index = cell_count * INTRAVARS;
   for (int i = 0; i < num_compartments; i++) {
-    dx_ion(index++) = JtNad(i, i) + QwNa.col(i).sum() - Qtotd.col(i).sum() * Nald(i, i);
+    xdot(index++) = JtNad(i, i) + QwNa.col(i).sum() - Qtotd.col(i).sum() * Nald(i, i);
   }
   for (int i = 0; i < num_compartments; i++) {
-    dx_ion(index++) = JtKd(i, i) + QwK.col(i).sum() - Qtotd.col(i).sum() * Kld(i, i);
+    xdot(index++) = JtKd(i, i) + QwK.col(i).sum() - Qtotd.col(i).sum() * Kld(i, i);
   }
   for (int i = 0; i < num_compartments; i++) {
-    dx_ion(index++) = JCld(i, i) + QwCl.col(i).sum() - Qtotd.col(i).sum() * Clld(i, i);
+    xdot(index++) = JCld(i, i) + QwCl.col(i).sum() - Qtotd.col(i).sum() * Clld(i, i);
   }
 }
 
@@ -378,7 +434,7 @@ void cLumen::lum_adj() {
   }
 }
 
-void cLumen::ieq() {
+void cLumen::ieq(MatrixX1C &xdot) {
   // This function calculates the differential equations of the intracellular
   // ionic concentrations and the membrane potentials of any given cell
   // using the int matrix of seven columns
@@ -392,26 +448,26 @@ void cLumen::ieq() {
     // enum intracellular_variables{Vol, Naplus, Kplus, Clminus, HCO3minus, Hplus, Va, Vb, INTRAVARS};
 
     // dw/dt
-    dx_ion(index++) = Jb(c_no, Jwater);
+    xdot(index++) = Jb(c_no, Jwater);
 
     // d[Na+]i/dt
-    dx_ion(index++) = (Jb(c_no, JNkcc1) - 3.0 * Jb(c_no, JNaK) + Jb(c_no, JNhe1) - Jb(c_no, JAe4) - 
+    xdot(index++) = (Jb(c_no, JNkcc1) - 3.0 * Jb(c_no, JNaK) + Jb(c_no, JNhe1) - Jb(c_no, JAe4) - 
         Jb(c_no, Jwater) * intra(c_no, Naplus)) / intra(c_no, Vol);
 
     // d[Cl-]i/dt
-    dx_ion(index++) = (2.0 * Jb(c_no, JNkcc1) + Jb(c_no, JAe4) + JCL(c_no) - Jb(c_no, Jwater) * intra(c_no, Clminus)) / intra(c_no, Vol);
+    xdot(index++) = (2.0 * Jb(c_no, JNkcc1) + Jb(c_no, JAe4) + JCL(c_no) - Jb(c_no, Jwater) * intra(c_no, Clminus)) / intra(c_no, Vol);
 
     // d[HCO3-]i/dt
-    dx_ion(index++) = (Jb(c_no, JBB) - 2.0 * Jb(c_no, JAe4) - Jb(c_no, Jwater) * intra(c_no, HCO3minus)) / intra(c_no, Vol);
+    xdot(index++) = (Jb(c_no, JBB) - 2.0 * Jb(c_no, JAe4) - Jb(c_no, Jwater) * intra(c_no, HCO3minus)) / intra(c_no, Vol);
 
     // d[H+]i/dt
-    dx_ion(index++) = (Jb(c_no, JBB) - Jb(c_no, JNhe1) - Jb(c_no, Jwater) * intra(c_no, Hplus)) / intra(c_no, Vol);
+    xdot(index++) = (Jb(c_no, JBB) - Jb(c_no, JNhe1) - Jb(c_no, Jwater) * intra(c_no, Hplus)) / intra(c_no, Vol);
 
     // dVa/dt
-    dx_ion(index++) = - JCL(c_no) - (JtNa.row(c_no).sum() + JtK.row(c_no).sum());
+    xdot(index++) = - JCL(c_no) - (JtNa.row(c_no).sum() + JtK.row(c_no).sum());
 
     // dVb/dt
-    dx_ion(index++) = - Jb(c_no, JNaK) - Jb(c_no, JK) + JtNa.row(c_no).sum() + JtK.row(c_no).sum();
+    xdot(index++) = - Jb(c_no, JNaK) - Jb(c_no, JK) + JtNa.row(c_no).sum() + JtK.row(c_no).sum();
   }
 }
 
