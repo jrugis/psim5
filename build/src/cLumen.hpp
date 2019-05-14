@@ -54,8 +54,7 @@ private:
   std::vector<std::vector<tCalcs> > apical_area_ratios;  // for each cell the ratios of areas of connected apical to total apical
   std::vector<tCalcs> basal_areas;  // for each cell the total area of the basal triangles
   std::vector<std::vector<tCalcs> > cells_exchange_buffer;  // buffer for receiving Ca input values from cells
-  MatrixX1C x_ion;  // initial value vector
-  MatrixX1C dx_ion;  // solution vector
+  MatrixX1C x_ion;  // solution vector
   MatrixXXC intra;  // intra cellular variables for all cells
   MatrixXXC Nal, Kl, Cll;  // lumenal variable arrays
   Eigen::Matrix<tCalcs, Eigen::Dynamic, BASOFLUXCOUNT> Jb;  // basolateral fluxes

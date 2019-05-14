@@ -586,7 +586,7 @@ void cCell_calcium::lumen_exchange() {
     // average Ca at this triangle
     double ca_tri = 0.0;
     for (int j = 0; j < 3; j++) {
-      int vertex_index = mesh->surface_triangles(this_tri);
+      int vertex_index = mesh->surface_triangles(this_tri, j);
       ca_tri += solvec(vertex_index);  // Ca is first
     }
     ca_tri *= third;
@@ -615,7 +615,7 @@ void cCell_calcium::lumen_exchange() {
       // average Ca at this triangle
       double ca_tri = 0.0;
       for (int j = 0; j < 3; j++) {
-        int vertex_index = mesh->surface_triangles(this_tri);
+        int vertex_index = mesh->surface_triangles(this_tri, j);
         ca_tri += solvec(vertex_index);  // Ca is first
       }
       ca_tri *= third;
@@ -623,6 +623,7 @@ void cCell_calcium::lumen_exchange() {
       PrCl += (1.0 / (1.0 + pow(fp[KCaCC] / ca_tri, fp[eta1]))) * area_tri;
     }
     PrCl /= surface_region_data[AREA_apical];
+
     exchange_values[i] = PrCl;
   }
 

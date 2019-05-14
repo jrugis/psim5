@@ -70,7 +70,6 @@ void cLumen::initx() {
   // number of variables of the system
   ffvars = num_compartments * LUMENALVARS + cell_count * INTRAVARS;
   x_ion.resize(ffvars, Eigen::NoChange);
-  dx_ion.resize(ffvars, Eigen::NoChange);
   out << "<Lumen> number of variables: " << ffvars << std::endl;
   
   std::ifstream icfile("IC_new.txt");
@@ -250,43 +249,35 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
   }
 
   // solve
-//  std::vector<tCalcs> yin(ffvars), yout;
-//  for (int i = 0; i < ffvars; i++) {
-//    yin[i] = x_ion(i);
-//  }
-//
-//  out << "Initial volumes: ";
-//  for (int i = 0; i < cell_count; i++) {
-//    out << x_ion(i * INTRAVARS + Vol);
-//    out << " ";
-//  }
-//  out << std::endl;
-//
-//  int istate = 1;
-//  LSODA lsoda;
-//  lsoda.lsoda_update(fffunc, ffvars, yin, yout, &t, t + dt, &istate, static_cast<void *>(this), 1e-4, 1e-8);
-//  if (istate < 1) {
-//    utils::fatal_error("lsoda faied to compute the solution", out);
-//  }
-//
-//  for (int i = 0; i < ffvars; i++) {
-//    x_ion(i) = yout[i + 1];
-//  }
-//
-//  out << "Final volumes: ";
-//  for (int i = 0; i < cell_count; i++) {
-//    out << x_ion(i * INTRAVARS + Vol);
-//    out << " ";
-//  }
-//  out << std::endl;
-
-  // just call fluid flow function for testing now
-  MatrixX1C xdot;
-  xdot.resize(ffvars, Eigen::NoChange);
-  fluid_flow_function(t, x_ion, xdot);
+  std::vector<tCalcs> yin(ffvars), yout;
   for (int i = 0; i < ffvars; i++) {
-    out << "x, xdot " << i << ": " << x_ion(i) << ", " << xdot(i) << std::endl;
+    yin[i] = x_ion(i);
   }
+
+  out << "Initial volumes: ";
+  for (int i = 0; i < cell_count; i++) {
+    out << x_ion(i * INTRAVARS + Vol);
+    out << " ";
+  }
+  out << std::endl;
+
+  int istate = 1;
+  LSODA lsoda;
+  lsoda.lsoda_update(fffunc, ffvars, yin, yout, &t, t + dt, &istate, static_cast<void *>(this), 1e-12, 1e-12);
+  if (istate < 1) {
+    utils::fatal_error("lsoda failed to compute the solution", out);
+  }
+
+  for (int i = 0; i < ffvars; i++) {
+    x_ion(i) = yout[i + 1];
+  }
+
+  out << "Final volumes: ";
+  for (int i = 0; i < cell_count; i++) {
+    out << x_ion(i * INTRAVARS + Vol);
+    out << " ";
+  }
+  out << std::endl;
 
   // TODO: send volumes back to cells
 
@@ -296,8 +287,6 @@ void cLumen::run() {
 }
 
 void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x, MatrixX1C &xdot) {
-  dx_ion.setZero();
-
   // arrange inputs (matlab var.m)
   var(x);
   
@@ -318,7 +307,7 @@ void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x, MatrixX1C &xdot) {
   // Use adjacency matrix for connectivity of the lumen.
   lum_adj();
 
-  // solution
+  // compute xdot
   int index = cell_count * INTRAVARS;
   for (int i = 0; i < num_compartments; i++) {
     xdot(index++) = JtNad(i, i) + QwNa.col(i).sum() - Qtotd.col(i).sum() * Nald(i, i);
@@ -327,7 +316,7 @@ void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x, MatrixX1C &xdot) {
     xdot(index++) = JtKd(i, i) + QwK.col(i).sum() - Qtotd.col(i).sum() * Kld(i, i);
   }
   for (int i = 0; i < num_compartments; i++) {
-    xdot(index++) = JCld(i, i) + QwCl.col(i).sum() - Qtotd.col(i).sum() * Clld(i, i);
+    xdot(index++) = - JCld(i, i) + QwCl.col(i).sum() - Qtotd.col(i).sum() * Clld(i, i);
   }
 }
 
@@ -408,11 +397,6 @@ void cLumen::lum_adj() {
   }
 
   // multiply by adjacency matrix
-  out << "DEBUG SIZES:" << std::endl;
-  out << "  adj: " << adj.rows() << " x " << adj.cols() << std::endl;
-  out << "  Nal: " << Nal.rows() << " x " << Nal.cols() << std::endl;
-  out << "  Nald: " << Nald.rows() << " x " << Nald.cols() << std::endl;
-
   for (int i = 0; i < num_compartments; i++) {
     Nald.col(i) = adj.col(i).cast<tCalcs>() * Nald_tmp;
     Kld.col(i) = adj.col(i).cast<tCalcs>() * Kld_tmp;
@@ -453,6 +437,9 @@ void cLumen::ieq(MatrixX1C &xdot) {
     // d[Na+]i/dt
     xdot(index++) = (Jb(c_no, JNkcc1) - 3.0 * Jb(c_no, JNaK) + Jb(c_no, JNhe1) - Jb(c_no, JAe4) - 
         Jb(c_no, Jwater) * intra(c_no, Naplus)) / intra(c_no, Vol);
+
+    // d[K+]i/dt
+    xdot(index++) = (Jb(c_no, JNkcc1) + 2.0 * Jb(c_no, JNaK) - Jb(c_no, JK) - Jb(c_no, Jwater) * intra(c_no, Kplus)) / intra(c_no, Vol);
 
     // d[Cl-]i/dt
     xdot(index++) = (2.0 * Jb(c_no, JNkcc1) + Jb(c_no, JAe4) + JCL(c_no) - Jb(c_no, Jwater) * intra(c_no, Clminus)) / intra(c_no, Vol);
@@ -577,18 +564,29 @@ void cLumen::var(MatrixX1C &x) {
   //    `num_compartments` vars for lumenal potassium
   //    `num_compartments` vars for lumenal chloride
 
+  // intracellular variables
   intra.setZero();
-  Nal.setZero();
-  Kl.setZero();
-  Cll.setZero();
   int n = 0;
   for (int i = 0; i < cell_count; i++) {
-    // intracellular variables
     for (int j = 0; j < INTRAVARS; j++) {
       intra(i, j) = x(n++);
     }
+  }
 
-    // lumenal variables
+  // Lumenal concentration matrix
+  // NOTE: the lumenal concentration matrix is essentially a lower
+  // triangular matrix whose rows represent cell number and its columns
+  // represent neighbour. However, for calculation of membrane
+  // potentials and tight junctional fluxes some of these must be
+  // repeated. However they are not variables of the system. To get
+  // around that, I just add the matrix's transpose to the variable
+  // matrix and I obtain what I want.
+
+  // lumenal variables
+  Nal.setZero();
+  Kl.setZero();
+  Cll.setZero();
+  for (int i = 0; i < cell_count; i++) {
     int num_neigh = neigh_clust[i].size();
     for (int j = 0; j < num_neigh; j++) {
       int neigh_index = neigh_clust[i][j];
@@ -603,16 +601,4 @@ void cLumen::var(MatrixX1C &x) {
       n++;
     }
   }
-
-  // Lumenal concentration matrix
-  // NOTE: the lumenal concentration matrix is essentially a lower
-  // triangular matrix whose rows represent cell number and its columns
-  // represent neighbour. However, for calculation of membrane
-  // potentials and tight junctional fluxes some of these must be
-  // repeated. However they are not variables of the system. To get
-  // around that, I just add the matrix's transpose to the variable
-  // matrix and I obtain what I want.
-
-  out << "<Lumen> DEBUGGING: var Nal:" << std::endl;
-  out << Nal << std::endl;
 }
