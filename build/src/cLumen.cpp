@@ -11,6 +11,7 @@
 #include <vector>
 #include <cmath>
 #include <utility>
+#include <chrono>
 
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/trim.hpp>
@@ -21,6 +22,7 @@
 #include "libsoda/LSODA.h"
 
 
+// function for calling from LSODA
 static void fffunc(tCalcs t, tCalcs* y, tCalcs* ydot, void *data) {
   cLumen* pt_cLumen = static_cast<cLumen *>(data);
   int ffvars = pt_cLumen->ffvars;
@@ -72,19 +74,18 @@ void cLumen::initx() {
   x_ion.resize(ffvars, Eigen::NoChange);
   out << "<Lumen> number of variables: " << ffvars << std::endl;
   
-  std::ifstream icfile("IC_new.txt");
+  std::ifstream icfile("flow_initial_conditions.dat");
   if (not icfile.is_open()) {
-    utils::fatal_error("could not open IC_new.txt for fluid flow initial conditions", out);
+    utils::fatal_error("could not open flow_initial_conditions.dat", out);
   }
 
   std::string line;
   std::vector<tCalcs> ictmp;
   for (int i = 0; i < ffvars; i++) {
     if (not getline(icfile, line)) {
-      utils::fatal_error("not enough lines in IC_new.txt", out);
+      utils::fatal_error("not enough lines in flow_initial_conditions.dat", out);
     }
     x_ion(i) = std::stod(line);
-    out << "<Lumen> IC value: " << x_ion(i) << std::endl;
   }
 
   icfile.close();
@@ -198,9 +199,9 @@ void cLumen::load_adjacency_matrix() {
 
   adj.resize(num_compartments, num_compartments);
 
-  std::ifstream adj_file("Adjs.txt");
+  std::ifstream adj_file("flow_adjacency_matrix.dat");
   if (not adj_file.is_open()) {
-    utils::fatal_error("could not open Adjs.txt for adjacency matrix", out);
+    utils::fatal_error("could not open flow_adjacency_matrix.dat", out);
   }
 
   std::string line;
@@ -216,17 +217,17 @@ void cLumen::load_adjacency_matrix() {
         }
       }
       else {
-        utils::fatal_error("wrong number of elements on line " + std::to_string(i + 1), out);
+        utils::fatal_error("wrong number of elements in flow_adjacency_matrix.dat on line " + std::to_string(i + 1), out);
       }
     }
     else {
-      utils::fatal_error("not enough lines in Adjs.txt", out);
+      utils::fatal_error("not enough lines in flow_adjacency_matrix.dat", out);
     }
   }
 
   adj_file.close();
 
-  out << "<Lumen< Adjacency matrix:" << std::endl;
+  out << "<Lumen> Adjacency matrix:" << std::endl;
   out << adj << std::endl;
 }
 
@@ -249,12 +250,14 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
   }
 
   // solve
+  auto start = std::chrono::system_clock::now();
+
   std::vector<tCalcs> yin(ffvars), yout;
   for (int i = 0; i < ffvars; i++) {
     yin[i] = x_ion(i);
   }
 
-  out << "Initial volumes: ";
+  out << "  Initial volumes: ";
   for (int i = 0; i < cell_count; i++) {
     out << x_ion(i * INTRAVARS + Vol);
     out << " ";
@@ -268,16 +271,22 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
     utils::fatal_error("lsoda failed to compute the solution", out);
   }
 
+  std::cout << "result:" << std::endl;
   for (int i = 0; i < ffvars; i++) {
     x_ion(i) = yout[i + 1];
+//    std::cout << "  x_ion(" << i + 1 << ") = " << x_ion(i) << std::endl;
   }
 
-  out << "Final volumes: ";
+  out << "  Final volumes: ";
   for (int i = 0; i < cell_count; i++) {
     out << x_ion(i * INTRAVARS + Vol);
     out << " ";
   }
   out << std::endl;
+
+  auto end = std::chrono::system_clock::now();
+  std::chrono::duration<double> elapsed = end - start;
+  out << "<Lumen> solver duration: " << elapsed.count() << "s"<< std::endl;
 
   // TODO: send volumes back to cells
 

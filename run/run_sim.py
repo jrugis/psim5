@@ -9,7 +9,7 @@ import sys
 ##################################################################
 
 # create two parameter lists from a sweep parameters file
-def get_sweep_parms(fname): 
+def get_sweep_parms(fname):
   p1 = []
   p2 = []
   first_parm = ""
@@ -35,16 +35,16 @@ def get_sweep_parms(fname):
   if len(p1) == 0:
     print("error: no sweep parameters")
     quit()
-  if len(p2) == 0: p2.append("")      
+  if len(p2) == 0: p2.append("")
   return p1, p2
-  
+
 # make a directory-naming-friendly label from a parameter string
-def make_label(s): 
+def make_label(s):
   tokens = s.strip().replace(".", "p").split()
   return "-".join(tokens)
 
 # replace line(s) in a parameters file
-def replace_line(fname, s1, s2): 
+def replace_line(fname, s1, s2):
   s1_found = (s1 == "")
   s2_found = (s2 == "")
   if (s1_found & s2_found): return  # do nothing if no parameters
@@ -56,13 +56,13 @@ def replace_line(fname, s1, s2):
   ftemp = open(ftemp_name, "w")
   for line in open(fname, "r"):
     line_parm = line.strip().split()[0]
-    if not s1_found: 
-      if s1_parm == line_parm: 
+    if not s1_found:
+      if s1_parm == line_parm:
         ftemp.write(s1) # replace line
         s1_found = True
         continue
-    if not s2_found: 
-      if s2_parm == line_parm: 
+    if not s2_found:
+      if s2_parm == line_parm:
         ftemp.write(s2) # replace line
         s2_found = True
         continue
@@ -119,7 +119,7 @@ mesh_base = "4sim_out_N4_p3-p2-p4-Xtet.bin"
 
 # create the top level results directory
 list = run_dir.split("/")[-4:]
-results_dir = "/nesi/nobackup/" + list[0] + "/" + list[1] + "/" + list[2] + "/" + list[3] 
+results_dir = "/nesi/nobackup/" + list[0] + "/" + list[1] + "/" + list[2] + "/" + list[3]
 results_dir += "/results/" + time.strftime("%y%m%d_%H%M%S")
 os.system("mkdir -p " + results_dir)
 os.chdir(results_dir)
@@ -139,6 +139,8 @@ for p1 in p1_array:
     os.system("chmod 770 psim5")
     os.system("cp " + run_dir + "/" + slurm + " ../run.sl")
     os.system("cp " + run_dir + "/summary_plot.py .")
+    os.system("cp " + run_dir + "/flow_initial_conditions.dat .")
+    os.system("cp " + run_dir + "/flow_adjacency.dat .")
     os.system("cp " + run_dir + "/" + fparms + " l1.dat")
     os.system("cp " + run_dir + "/" + parms + " a1.dat")
     replace_line("a1.dat", p1, p2)
