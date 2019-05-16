@@ -33,7 +33,7 @@ typedef Eigen::Array<tCalcs, 1, DIFVARS> Array1VC;
 typedef Eigen::Array<tCalcs, REF_MASS_SIZE, REF_MASS_SIZE> ArrayRefMass;
 typedef Eigen::Triplet<tCalcs> Triplet;
 
-struct cfc {int cell; int fcount;}; // other cell, connected face count
+struct cfc {int cell; int fcount; int sindex;}; // other cell, connected face count, common triangles start index
 
 class cCell_calcium {
 friend class cCellMesh;
@@ -51,6 +51,9 @@ private:
   Eigen::SimplicialLDLT<Eigen::SparseMatrix<tCalcs>> solver;
   tCalcs p[PCOUNT]; // the model parameters array
   std::vector<cfc> cells; // vector of connected cells and face counts
+  tCalcs** exchange_send_buffer;  // buffers for exchanging values between connected cells
+  tCalcs** exchange_recv_buffer;
+  ArrayX1C exchange_load_ip;
 
   Eigen::Array<tCalcs, Eigen::Dynamic, MODELECOUNT> element_data;
   Eigen::Array<tCalcs, Eigen::Dynamic, MODELSCOUNT> surface_data;
@@ -62,6 +65,8 @@ private:
   void init_solvec();
   void make_matrices();
   void exchange();
+  void compute_exchange_values(int cell);
+  void compute_exchange_load(int cell);
   void save_results(std::ofstream &data_file, int var);
 
   MatrixX1C solve_nd(tCalcs delta_time);
