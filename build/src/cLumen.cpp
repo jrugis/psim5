@@ -74,21 +74,28 @@ void cLumen::initx() {
   x_ion.resize(ffvars, Eigen::NoChange);
   out << "<Lumen> number of variables: " << ffvars << std::endl;
   
+  // load the initial conditions input file
   std::ifstream icfile("flow_initial_conditions.dat");
   if (not icfile.is_open()) {
     utils::fatal_error("could not open flow_initial_conditions.dat", out);
   }
 
   std::string line;
-  std::vector<tCalcs> ictmp;
-  for (int i = 0; i < ffvars; i++) {
-    if (not getline(icfile, line)) {
-      utils::fatal_error("not enough lines in flow_initial_conditions.dat", out);
-    }
-    x_ion(i) = std::stod(line);
+  int count = 0;
+  while (getline(icfile, line)) {
+    // remove comments
+    if (line.data()[0] == '#') continue;
+    int ci = line.find_first_of("#");
+	if (ci > 0) line = line.substr(0, ci);
+
+    x_ion(count++) = std::stod(line);
   }
 
   icfile.close();
+
+  if (count != ffvars) {
+    utils::fatal_error("not enough lines in flow_initial_conditions.dat", out);
+  }
 
   // set up variable arrays
   intra.resize(cell_count, INTRAVARS);
@@ -205,7 +212,6 @@ void cLumen::load_adjacency_matrix() {
   }
 
   std::string line;
-  std::vector<tCalcs> ictmp;
   for (int i = 0; i < num_compartments; i++) {
     if (getline(adj_file, line)) {
       line = boost::trim_right_copy(line);  // remove trailing whitespace
@@ -234,7 +240,7 @@ void cLumen::load_adjacency_matrix() {
 void cLumen::iterate(tCalcs t, tCalcs dt) {
   out << "<Lumen> iteration: t = " << t << " (dt = " << dt << ")" << std::endl;
 
-  // receive Ca inputs
+  // receive Ca inputs (non-blocking)
   MPI_Request recv_requests[cell_count];
   for (int i = 0; i < cell_count; i++) {
     MPI_CHECK(MPI_Irecv(cells_exchange_buffer[i].data(), cells_exchange_buffer[i].size(), MPI_DOUBLE,
@@ -242,12 +248,8 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
   }
 
   // wait for data to come in
-  for (int i = 0; i < cell_count; i++) {
-    MPI_Status status;
-    int recv_index;
-    MPI_CHECK(MPI_Waitany(cell_count, recv_requests, &recv_index, &status));
-    // got input from cell number: recv_index -- do something with it...
-  }
+  MPI_Status recv_statuses[cell_count];
+  MPI_CHECK(MPI_Waitall(cell_count, recv_requests, recv_statuses));
 
   // solve
   auto start = std::chrono::system_clock::now();
@@ -271,7 +273,7 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
     utils::fatal_error("lsoda failed to compute the solution", out);
   }
 
-  std::cout << "result:" << std::endl;
+//  std::cout << "result:" << std::endl;
   for (int i = 0; i < ffvars; i++) {
     x_ion(i) = yout[i + 1];
 //    std::cout << "  x_ion(" << i + 1 << ") = " << x_ion(i) << std::endl;

@@ -127,7 +127,7 @@ void cCell_calcium::lumen_prep() {
   for (std::vector<cfc>::size_type i = 0; i < cells_apical.size(); i++) {
     int start_index = cells_apical[i].sindex;
     int num_tris = cells_apical[i].fcount;
-    double area = 0.0;
+    tCalcs area = 0.0;
     for (int j = 0; j < num_tris; j++) {
       int this_tri = mesh->common_apical_triangles(start_index + j, tTri);
       area += surface_data(this_tri, AREA_s);
@@ -570,7 +570,7 @@ void cCell_calcium::exchange() {
 
 void cCell_calcium::lumen_exchange() {
   int num_apical_connected_cells = cells_apical.size();
-  double exchange_values[num_apical_connected_cells + 1];
+  tCalcs exchange_values[num_apical_connected_cells + 1];
 
   // % Ca2+ Activated K+ Channels open probability
   // PK = sum((1./(1+(par.KCaKC./(Ca{2}{cell_no})).^par.eta2)).*par.Sb_k{cell_no})./par.Sb{cell_no};
@@ -578,13 +578,13 @@ void cCell_calcium::lumen_exchange() {
   //   Ca{2}{cell_no} is array of average Ca values of basal triangles in this cell
   //   par.Sb_k{cell_no} is array of surface areas of basal triangles in this cell
   //   par.Sb{cell_no} is total surface area of basal triangles in this cell
-  double PK = 0.0;
+  tCalcs PK = 0.0;
   for (int i = 0; i < mesh->basal_triangles_count; i++) {
     int this_tri = mesh->basal_triangles(i);
-    double area_tri = surface_data(this_tri, AREA_s);
+    tCalcs area_tri = surface_data(this_tri, AREA_s);
 
     // average Ca at this triangle
-    double ca_tri = 0.0;
+    tCalcs ca_tri = 0.0;
     for (int j = 0; j < 3; j++) {
       int vertex_index = mesh->surface_triangles(this_tri, j);
       ca_tri += solvec(vertex_index);  // Ca is first
@@ -607,13 +607,13 @@ void cCell_calcium::lumen_exchange() {
     int n_tri = cells_apical[i].fcount;
     int s_ind = cells_apical[i].sindex;
 
-    double PrCl = 0.0;
+    tCalcs PrCl = 0.0;
     for (int j = 0; j < n_tri; j++) {
       int this_tri = mesh->common_apical_triangles(s_ind + j, tTri);
-      double area_tri = surface_data(this_tri, AREA_s);
+      tCalcs area_tri = surface_data(this_tri, AREA_s);
 
       // average Ca at this triangle
-      double ca_tri = 0.0;
+      tCalcs ca_tri = 0.0;
       for (int j = 0; j < 3; j++) {
         int vertex_index = mesh->surface_triangles(this_tri, j);
         ca_tri += solvec(vertex_index);  // Ca is first
