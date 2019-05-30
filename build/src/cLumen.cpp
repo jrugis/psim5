@@ -75,9 +75,9 @@ void cLumen::initx() {
   out << "<Lumen> number of variables: " << ffvars << std::endl;
   
   // load the initial conditions input file
-  std::ifstream icfile("flow_initial_conditions.dat");
+  std::ifstream icfile("flow_init.dat");
   if (not icfile.is_open()) {
-    utils::fatal_error("could not open flow_initial_conditions.dat", out);
+    utils::fatal_error("could not open flow_init.dat", out);
   }
 
   std::string line;
@@ -94,7 +94,7 @@ void cLumen::initx() {
   icfile.close();
 
   if (count != ffvars) {
-    utils::fatal_error("not enough lines in flow_initial_conditions.dat", out);
+    utils::fatal_error("not enough lines in flow_init.dat", out);
   }
 
   // set up variable arrays
@@ -206,9 +206,9 @@ void cLumen::load_adjacency_matrix() {
 
   adj.resize(num_compartments, num_compartments);
 
-  std::ifstream adj_file("flow_adjacency_matrix.dat");
+  std::ifstream adj_file("flow_adj.dat");
   if (not adj_file.is_open()) {
-    utils::fatal_error("could not open flow_adjacency_matrix.dat", out);
+    utils::fatal_error("could not open flow_adj.dat", out);
   }
 
   std::string line;
@@ -223,11 +223,11 @@ void cLumen::load_adjacency_matrix() {
         }
       }
       else {
-        utils::fatal_error("wrong number of elements in flow_adjacency_matrix.dat on line " + std::to_string(i + 1), out);
+        utils::fatal_error("wrong number of elements in flow_adj.dat on line " + std::to_string(i + 1), out);
       }
     }
     else {
-      utils::fatal_error("not enough lines in flow_adjacency_matrix.dat", out);
+      utils::fatal_error("not enough lines in flow_adj.dat", out);
     }
   }
 
