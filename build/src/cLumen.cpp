@@ -290,8 +290,12 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
   std::chrono::duration<double> elapsed = end - start;
   out << "<Lumen> solver duration: " << elapsed.count() << "s"<< std::endl;
 
-  // TODO: send volumes back to cells
-
+  // send volumes back to cells
+  for (int i = 0; i < cell_count; i++) {
+    int dest = cell_rank + i;
+    tCalcs cell_volume = x_ion(i * INTRAVARS + Vol);
+    MPI_CHECK(MPI_Send(&cell_volume, 1, MPI_DOUBLE, dest, LUMEN_CELL_TAG, MPI_COMM_WORLD));
+  }
 }
 
 void cLumen::run() {

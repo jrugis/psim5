@@ -57,6 +57,7 @@ private:
   tCalcs** exchange_send_buffer;  // buffers for exchanging values between connected cells
   tCalcs** exchange_recv_buffer;
   ArrayX1C exchange_load_ip;
+  tCalcs cell_volume;  // volume of the cell
 
   Eigen::Array<tCalcs, Eigen::Dynamic, MODELECOUNT> element_data;
   Eigen::Array<tCalcs, Eigen::Dynamic, MODELSCOUNT> surface_data;

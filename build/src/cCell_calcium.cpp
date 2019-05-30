@@ -630,9 +630,10 @@ void cCell_calcium::lumen_exchange() {
   // send to Lumen
   MPI_CHECK(MPI_Send(exchange_values, num_apical_connected_cells + 1, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
 
-  // TODO: receive volume back from Lumen
-
-
+  // receive volume back from Lumen
+  MPI_Status status;
+  MPI_CHECK(MPI_Recv(&cell_volume, 1, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD, &status));
+  out << "Updated cell volume = " << cell_volume << std::endl;
 }
 
 void cCell_calcium::run() {
@@ -669,7 +670,7 @@ void cCell_calcium::run() {
     out << " delta_time: " << delta_time << "s" << std::endl;
     plc = ((current_time >= p[PLCsrt]) and (current_time <= p[PLCfin])); // PLC on or off?
 
-    // TODO: Lumen exchange (send Ca info for fx_ap and fx_ba, receive back volume)
+    // Lumen exchange (send Ca info for fx_ap and fx_ba, receive back volume)
     lumen_exchange();
 
     if(delta_time != prev_delta_time) { // recalculate A matrix if time step changed
