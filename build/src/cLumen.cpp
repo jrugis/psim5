@@ -251,14 +251,15 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
   MPI_Status recv_statuses[cell_count];
   MPI_CHECK(MPI_Waitall(cell_count, recv_requests, recv_statuses));
 
-  // solve
   auto start = std::chrono::system_clock::now();
 
+  // transfer input values into required format
   std::vector<tCalcs> yin(ffvars), yout;
   for (int i = 0; i < ffvars; i++) {
     yin[i] = x_ion(i);
   }
 
+  // debugging - TODO: remove for production
   out << "  Initial volumes: ";
   for (int i = 0; i < cell_count; i++) {
     out << x_ion(i * INTRAVARS + Vol);
@@ -266,6 +267,7 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
   }
   out << std::endl;
 
+  // call the solver
   int istate = 1;
   LSODA lsoda;
   lsoda.lsoda_update(fffunc, ffvars, yin, yout, &t, t + dt, &istate, static_cast<void *>(this), 1e-12, 1e-12);
@@ -273,12 +275,14 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
     utils::fatal_error("lsoda failed to compute the solution", out);
   }
 
+  //  extract the results
 //  std::cout << "result:" << std::endl;
   for (int i = 0; i < ffvars; i++) {
     x_ion(i) = yout[i + 1];
 //    std::cout << "  x_ion(" << i + 1 << ") = " << x_ion(i) << std::endl;
   }
 
+  // debugging - TODO: remove for production
   out << "  Final volumes: ";
   for (int i = 0; i < cell_count; i++) {
     out << x_ion(i * INTRAVARS + Vol);
@@ -286,19 +290,23 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
   }
   out << std::endl;
 
+  // compute derivate at solution point too (required for volume term)
+  MatrixX1C x_ion_dot;
+  x_ion_dot.resize(ffvars, Eigen::NoChange);
+  fluid_flow_function(t, x_ion, x_ion_dot);
+
   auto end = std::chrono::system_clock::now();
   std::chrono::duration<double> elapsed = end - start;
   out << "<Lumen> solver duration: " << elapsed.count() << "s"<< std::endl;
 
-  // send volumes back to cells
+  // send volume terms back to cells
   for (int i = 0; i < cell_count; i++) {
     int dest = cell_rank + i;
-    tCalcs cell_volume = x_ion(i * INTRAVARS + Vol);
-    MPI_CHECK(MPI_Send(&cell_volume, 1, MPI_DOUBLE, dest, LUMEN_CELL_TAG, MPI_COMM_WORLD));
+    int volume_index = i * INTRAVARS + Vol;
+    tCalcs cell_volume_term = x_ion_dot(volume_index) / x_ion(volume_index);
+    out << "DEBUG: cell_volume_term for cell " << dest << " = " << cell_volume_term << std::endl;
+    MPI_CHECK(MPI_Send(&cell_volume_term, 1, MPI_DOUBLE, dest, LUMEN_CELL_TAG, MPI_COMM_WORLD));
   }
-}
-
-void cLumen::run() {
 }
 
 void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x, MatrixX1C &xdot) {

@@ -453,9 +453,11 @@ MatrixX1C cCell_calcium::make_load(tCalcs dt, bool plc){
   }
 
   // the diffusing variables
-  load.block(0, 0, np, 1) = load_c;
-  load.block(np, 0, np, 1) = load_ip + exchange_load_ip;
-  load.block(2 * np, 0, np, 1) = load_ce;
+//  cell_volume_term = 0;
+  out << "DEBUG: cell_volume_term = " << cell_volume_term << std::endl;
+  load.block(0, 0, np, 1) = load_c - cell_volume_term * c;
+  load.block(np, 0, np, 1) = load_ip + exchange_load_ip - cell_volume_term * ip;
+  load.block(2 * np, 0, np, 1) = load_ce - cell_volume_term * ce;
 
   return load;
 }
@@ -632,8 +634,7 @@ void cCell_calcium::lumen_exchange() {
 
   // receive volume back from Lumen
   MPI_Status status;
-  MPI_CHECK(MPI_Recv(&cell_volume, 1, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD, &status));
-  out << "Updated cell volume = " << cell_volume << std::endl;
+  MPI_CHECK(MPI_Recv(&cell_volume_term, 1, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD, &status));
 }
 
 void cCell_calcium::run() {
