@@ -25,12 +25,16 @@ class cLumen {
 public:
   cLumen(std::string host_name, int rank, int c_rank, int c_count);
   ~cLumen();
+  void init();
   void iterate(tCalcs t, tCalcs dt);
   void fluid_flow_function(tCalcs t, MatrixX1C &x, MatrixX1C &xdot);
   int ffvars;  // number of fluid flow variables
 
 private:
   void initx();
+  void receive_ca_inputs();
+  void solve_fluid_flow(tCalcs t, tCalcs dt);
+  void distribute_volume_terms();
   void load_adjacency_matrix();
   void prep_cell_calcium();
   void var(MatrixX1C &x);

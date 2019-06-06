@@ -54,7 +54,9 @@ cLumen::cLumen(std::string host_name, int rank, int c_rank, int c_count) {
   out << "<Lumen> host_name: " << host_name << std::endl;
 
   utils::get_parameters(id, flowParms, 1, p, out);
+}
 
+void cLumen::init() {
   prep_cell_calcium();
   load_adjacency_matrix();
   initx();
@@ -237,9 +239,7 @@ void cLumen::load_adjacency_matrix() {
   out << adj << std::endl;
 }
 
-void cLumen::iterate(tCalcs t, tCalcs dt) {
-  out << "<Lumen> iteration: t = " << t << " (dt = " << dt << ")" << std::endl;
-
+void cLumen::receive_ca_inputs() {
   // receive Ca inputs (non-blocking)
   MPI_Request recv_requests[cell_count];
   for (int i = 0; i < cell_count; i++) {
@@ -250,7 +250,22 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
   // wait for data to come in
   MPI_Status recv_statuses[cell_count];
   MPI_CHECK(MPI_Waitall(cell_count, recv_requests, recv_statuses));
+}
 
+void cLumen::iterate(tCalcs t, tCalcs dt) {
+  out << "<Lumen> iteration: t = " << t << " (dt = " << dt << ")" << std::endl;
+
+  // receive Ca inputs (non-blocking)
+  receive_ca_inputs();
+
+  // solve fluid flow
+  solve_fluid_flow(t, dt);
+
+  // send volume terms back to cells
+  distribute_volume_terms();
+}
+
+void cLumen::solve_fluid_flow(tCalcs t, tCalcs dt) {
   auto start = std::chrono::system_clock::now();
 
   // transfer input values into required format
@@ -290,14 +305,16 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
   }
   out << std::endl;
 
-  // compute derivate at solution point too (required for volume term)
-  MatrixX1C x_ion_dot;
-  x_ion_dot.resize(ffvars, Eigen::NoChange);
-  fluid_flow_function(t, x_ion, x_ion_dot);
-
   auto end = std::chrono::system_clock::now();
   std::chrono::duration<double> elapsed = end - start;
   out << "<Lumen> solver duration: " << elapsed.count() << "s"<< std::endl;
+}
+
+void cLumen::distribute_volume_terms() {
+  // compute derivate at solution point too (required for volume term)
+  MatrixX1C x_ion_dot;
+  x_ion_dot.resize(ffvars, Eigen::NoChange);
+  fluid_flow_function(0, x_ion, x_ion_dot);
 
   // send volume terms back to cells
   for (int i = 0; i < cell_count; i++) {

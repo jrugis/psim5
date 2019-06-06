@@ -22,6 +22,7 @@ cAcinus::cAcinus(std::string host_name, int rank, int c_rank, int c_count) {
   // for now just run the Lumen from within Acinus but could be moved to separated process if needed
   // or if there are multiple Lumen
   lumen = new cLumen(host_name, rank, c_rank, c_count);
+  lumen->init();
   id = "a1";
 
   out.open(id + ".out");
