@@ -52,7 +52,7 @@ utils.o: $(SRC)/utils.cpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp
 cAcinus.o: $(SRC)/cAcinus.cpp $(SRC)/cAcinus.hpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp $(SRC)/cLumen.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
-cLumen.o: $(SRC)/cLumen.cpp $(SRC)/cLumen.hpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp
+cLumen.o: $(SRC)/cLumen.cpp $(SRC)/cLumen.hpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp $(SRC)/cCVode.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
 cCVode.o: $(SRC)/cCVode.cpp $(SRC)/cCVode.hpp $(SRC)/global_defs.hpp $(SRC)/utils.hpp

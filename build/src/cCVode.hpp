@@ -28,16 +28,14 @@ class cCVode {
     std::ofstream& out;
     bool initialised;
     sunindextype nvars;
-    realtype reltol, t;
-    N_Vector y, abstol;
+    realtype t;
+    N_Vector y;
     SUNMatrix A;
     SUNLinearSolver LS;
     void *cvode_mem;
-    int retval, retvalr, iout;
-        
+
     void check_retval(void *returnvalue, std::string funcname, int opt);
     void PrintFinalStats(void *cvode_mem);
-
 };
 
 #endif
