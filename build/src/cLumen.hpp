@@ -21,6 +21,8 @@ enum basolateral_fluxes{Qb, JNaK, JNkcc1, JAe4, JNhe1, JBB, JK, Ii, Jwater, BASO
 
 typedef Eigen::Array<tCalcs, Eigen::Dynamic, Eigen::Dynamic> ArrayXXC;
 
+class cCVode;
+
 class cLumen {
 public:
   cLumen(std::string host_name, int rank, int c_rank, int c_count);
@@ -28,7 +30,7 @@ public:
   void init();
   void iterate(tCalcs t, tCalcs dt);
   void fluid_flow_function(tCalcs t, MatrixX1C &x, MatrixX1C &xdot);
-  int ffvars;  // number of fluid flow variables
+  int get_nvars() { return ffvars; }
 
 private:
   void initx();
@@ -47,6 +49,7 @@ private:
 
   std::string id;
   std::ofstream out;
+  int ffvars;  // number of fluid flow variables
   tCalcs p[FPCOUNT];  // the fluid flow parameters array
   int my_rank, cell_rank, cell_count;
   int num_compartments;  // number of lumenal compartments (from meshes)
@@ -67,6 +70,7 @@ private:
   ArrayXXC JtNad, JtKd, JCld, Qtotd, Nald, Kld, Clld;  // luminal structure equations
   ArrayXXC QwNa, QwK, QwCl;  // water/ion influx
   Eigen::ArrayXXi adj;  // adjacency matrix
+  cCVode* cvode_solver;
 };
 
 #endif /* CLUMEN_ */

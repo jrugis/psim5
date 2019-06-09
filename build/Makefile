@@ -24,17 +24,18 @@ CPP = mpicxx
 
 ## optimised
 CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -march=native -mtune=native -Wall -g
+#CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O0 -Wall -g
 
 ###########################################################################################
 ## program
 
 ## Mahuika
-CPP_INCLUDES = -I/usr/include
-#CPP_LIBS = -lsundials_cvodes
+#CPP_INCLUDES = -I/usr/include
+CPP_LIBS = -lsundials_cvode -lsundials_nvecserial
 
 EXE = ../run/psim5
 #OBJS = main.o utils.o cAcinus.o cLumen.o cCVodes.o cCell_flow.o cCell_calcium.o cCellMesh.o
-OBJS = main.o utils.o cAcinus.o cCell_calcium.o cCellMesh.o cLumen.o LSODA.o
+OBJS = main.o utils.o cAcinus.o cCell_calcium.o cCellMesh.o cLumen.o LSODA.o cCVode.o
 SRC = ./src
 
 all: $(EXE)
@@ -54,8 +55,8 @@ cAcinus.o: $(SRC)/cAcinus.cpp $(SRC)/cAcinus.hpp $(SRC)/utils.hpp $(SRC)/global_
 cLumen.o: $(SRC)/cLumen.cpp $(SRC)/cLumen.hpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
-#cCVodes.o: $(SRC)/cCVodes.cpp $(SRC)/cCVodes.hpp
-#	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
+cCVode.o: $(SRC)/cCVode.cpp $(SRC)/cCVode.hpp $(SRC)/global_defs.hpp $(SRC)/utils.hpp
+	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
 #cCell_flow.o: $(SRC)/cCell_flow.cpp $(SRC)/cCell_flow.hpp
 #	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<

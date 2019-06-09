@@ -5,6 +5,8 @@
  *      Author: jrugis
  */
 
+//#define DEBUG_LUMEN
+
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -12,12 +14,14 @@
 #include <cmath>
 #include <utility>
 #include <chrono>
+#include <iomanip>
 
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/trim.hpp>
 
 #include "global_defs.hpp"
 #include "utils.hpp"
+#include "cCVode.hpp"
 #include "cLumen.hpp"
 #include "libsoda/LSODA.h"
 
@@ -25,7 +29,7 @@
 // function for calling from LSODA
 static void fffunc(tCalcs t, tCalcs* y, tCalcs* ydot, void *data) {
   cLumen* pt_cLumen = static_cast<cLumen *>(data);
-  int ffvars = pt_cLumen->ffvars;
+  int ffvars = pt_cLumen->get_nvars();
 
   MatrixX1C ymat;
   ymat.resize(ffvars, Eigen::NoChange);
@@ -52,6 +56,7 @@ cLumen::cLumen(std::string host_name, int rank, int c_rank, int c_count) {
   out.open(id + ".out");
   out << "<Lumen> id: " << id << std::endl;
   out << "<Lumen> host_name: " << host_name << std::endl;
+  out << std::fixed << std::setprecision(15);
 
   utils::get_parameters(id, flowParms, 1, p, out);
 }
@@ -266,6 +271,24 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
 }
 
 void cLumen::solve_fluid_flow(tCalcs t, tCalcs dt) {
+#ifdef DEBUG_LUMEN
+  { // DEBUGGING - call function once and print result
+    out << "DEBUGXXX" << std::endl;
+    MatrixX1C x_ion_dot;
+    x_ion_dot.resize(ffvars, Eigen::NoChange);
+    fluid_flow_function(t, x_ion, x_ion_dot);
+    std::ofstream dbgfile;
+    dbgfile.open("ffres.txt");
+    dbgfile << std::fixed << std::setprecision(15);
+    for (int i = 0; i < ffvars; i++) {
+      dbgfile << "xdot(" << i + 1 << ") = " << x_ion_dot(i) << std::endl;
+    }
+    dbgfile.close();
+    
+//    utils::fatal_error("stopping for debugging", out);
+  }
+#endif
+
   auto start = std::chrono::system_clock::now();
 
   // transfer input values into required format
@@ -342,6 +365,78 @@ void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x, MatrixX1C &xdot) {
 
   // Set the intracellular concentration differential equations
   ieq(xdot);
+
+# ifdef DEBUG_LUMEN
+  { // DEBUGGING
+    std::ofstream dbg;
+    dbg.open("JtNa.out");
+    dbg << std::fixed << std::setprecision(15);
+    for (int i = 0; i < 7; i++) {
+      for (int j = 0; j < 7; j++) {
+        dbg << JtNa(i, j) << " ";
+      }
+      dbg << std::endl;
+    }
+    dbg.close();
+    
+    dbg.open("JtK.out");
+    dbg << std::fixed << std::setprecision(15);
+    for (int i = 0; i < 7; i++) {
+      for (int j = 0; j < 7; j++) {
+        dbg << JtK(i, j) << " ";
+      }
+      dbg << std::endl;
+    }
+    dbg.close();
+
+    dbg.open("JCl.out");
+    dbg << std::fixed << std::setprecision(15);
+    for (int i = 0; i < 7; i++) {
+      for (int j = 0; j < 7; j++) {
+        dbg << JCl(i, j) << " ";
+      }
+      dbg << std::endl;
+    }
+    dbg.close();
+
+    dbg.open("Qa.out");
+    dbg << std::fixed << std::setprecision(15);
+    for (int i = 0; i < 7; i++) {
+      for (int j = 0; j < 7; j++) {
+        dbg << Qa(i, j) << " ";
+      }
+      dbg << std::endl;
+    }
+    dbg.close();
+
+    dbg.open("Qtot.out");
+    dbg << std::fixed << std::setprecision(15);
+    for (int i = 0; i < 7; i++) {
+      for (int j = 0; j < 7; j++) {
+        dbg << Qtot(i, j) << " ";
+      }
+      dbg << std::endl;
+    }
+    dbg.close();
+
+    dbg.open("JCL.out");
+    dbg << std::fixed << std::setprecision(15);
+    for (int i = 0; i < 7; i++) {
+      dbg << JCL(i) << std::endl;
+    }
+    dbg.close();
+
+    dbg.open("Jb.out");
+    dbg << std::fixed << std::setprecision(15);
+    for (int i = 0; i < 7; i++) {
+      for (int j = 0; j < 9; j++) {
+        dbg << Jb(i, j) << " ";
+      }
+      dbg << std::endl;
+    }
+    dbg.close();
+  }
+#endif
 
   // Set the lumenal concentration equations
   // Use adjacency matrix for connectivity of the lumen.
@@ -518,7 +613,7 @@ void cLumen::fx_ba() {
     tCalcs PK = cells_exchange_buffer[cell_no].back();
 
     // Ca2+ Activated K+ Channels Total Flux
-    Jb(cell_no, JK) = p[GK] * PK * (intra(cell_no, 7) - VK) / F;
+    Jb(cell_no, JK) = p[GK] * PK * (intra(cell_no, 7) - VK) / CONST_F;
 
     // 3Na+/2K+ ATPases
     Jb(cell_no, JNaK) = basal_areas[cell_no] * p[aNaK] * (p[r] * pow(p[Ke], 2) * pow(intra(cell_no, 1), 3) / 
@@ -571,14 +666,14 @@ void cLumen::fx_ap() {
       // Note: PrCl was computed on cCell_calcium and stored in `cells_exchange_buffer[c_no]`
       tCalcs PrCl = cells_exchange_buffer[c_no][j];
       tCalcs VCl = Sa_p * RTF * log(Cll(c_no, ngh) / intra(c_no, 3));
-      JCl(c_no, ngh) = p[GCl] * PrCl * (intra(c_no, 6) + (VCl / Sa_p)) / F;
+      JCl(c_no, ngh) = p[GCl] * PrCl * (intra(c_no, 6) + (VCl / Sa_p)) / CONST_F;
 
       // Tight Junctional Fluxes
       tCalcs VtNa = Sa_p * RTF * log(Nal(c_no, ngh) / p[Nae]);
-      JtNa(c_no, ngh) = Sa_p * p[GtNa] * p[St] * (Vt - (VtNa / Sa_p)) / F;
+      JtNa(c_no, ngh) = Sa_p * p[GtNa] * p[St] * (Vt - (VtNa / Sa_p)) / CONST_F;
 
       tCalcs VtK = Sa_p * RTF * log(Kl(c_no, ngh) / p[Ke]);
-      JtK(c_no, ngh) = Sa_p * p[GtK] * p[St] * (Vt - (VtK / Sa_p)) / F;
+      JtK(c_no, ngh) = Sa_p * p[GtK] * p[St] * (Vt - (VtK / Sa_p)) / CONST_F;
 
       // Luminal Osmolarity (Using electroneutrality principle)
       tCalcs Il = 2.0 * Cll(c_no, ngh) + p[Ul];

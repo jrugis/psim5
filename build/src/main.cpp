@@ -9,6 +9,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <mpi.h>
+#include <fenv.h>
 
 #include "global_defs.hpp"
 #include "cAcinus.hpp"
@@ -32,6 +33,8 @@ int main(int argc,char **args){
   std::string host_name;
   struct timespec start, end;
   int duration;
+
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
 
   // initialize mpi
   MPI_CHECK(MPI_Init(&argc, &args));

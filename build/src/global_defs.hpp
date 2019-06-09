@@ -119,7 +119,7 @@ enum fluid_flow_parameters{ \
 // thermodynamic constants
 #define R 8.314462100000000
 #define T 310
-#define F 9.648533650000000e4
+#define CONST_F 9.648533650000000e4
 #define RTF 26.713730236096550
 
 //************************************************************************ 
