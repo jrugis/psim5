@@ -12,9 +12,10 @@ git reset --hard origin/master
 Prerequisites
 -------------
 (could be put in .bash_profile)
-ml gimkl/2017a
-ml Eigen/3.3.4
-ml Python/2.7.14-gimkl-2017a
+ml Boost/1.69.0-GCCcore-7.4.0
+ml SUNDIALS/4.1.0-gimkl-2018b
+ml Eigen/3.3.7
+ml Python/3.7.3-gimkl-2018b
 
 
 Build

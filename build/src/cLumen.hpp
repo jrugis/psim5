@@ -21,7 +21,11 @@ enum basolateral_fluxes{Qb, JNaK, JNkcc1, JAe4, JNhe1, JBB, JK, Ii, Jwater, BASO
 
 typedef Eigen::Array<tCalcs, Eigen::Dynamic, Eigen::Dynamic> ArrayXXC;
 
+#ifdef SUNDIALS_SOLVER
 class cCVode;
+#else
+class cLSODA;
+#endif
 
 class cLumen {
 public:
@@ -34,6 +38,7 @@ public:
 
 private:
   void initx();
+  void init_solver();
   void receive_ca_inputs();
   void solve_fluid_flow(tCalcs t, tCalcs dt);
   void distribute_volume_terms();
@@ -70,7 +75,12 @@ private:
   ArrayXXC JtNad, JtKd, JCld, Qtotd, Nald, Kld, Clld;  // luminal structure equations
   ArrayXXC QwNa, QwK, QwCl;  // water/ion influx
   Eigen::ArrayXXi adj;  // adjacency matrix
-  cCVode* cvode_solver;
+#ifdef SUNDIALS_SOLVER
+  cCVode* solver;
+#else
+  cLSODA* solver;
+#endif
+  bool solver_initialised;
 };
 
 #endif /* CLUMEN_ */

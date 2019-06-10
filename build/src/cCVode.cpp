@@ -83,6 +83,7 @@ static int f(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
 
 cCVode::cCVode(cLumen* lumen_, std::ofstream& out_) : 
     lumen(lumen_), out(out_), initialised(false), nvars(0) {
+  out << "<CVode>: creating CVode solver" << std::endl;
   y = NULL;
   A = NULL;
   LS = NULL;
@@ -105,9 +106,9 @@ cCVode::~cCVode() {
   }
 }
 
-void cCVode::init(sunindextype nvars_, MatrixX1C& yini) {
+void cCVode::init(MatrixX1C& yini) {
   int retval;
-  nvars = nvars_;
+  nvars = yini.rows();
   realtype t0 = 0.0;
 
   /* Create serial vector of length NEQ for I.C. */
@@ -120,9 +121,9 @@ void cCVode::init(sunindextype nvars_, MatrixX1C& yini) {
   }
 
   /* Set the scalar relative tolerance */
-  realtype reltol = 1e-12;
+  realtype reltol = 1e-08;
   /* Set the scalar absolute tolerance */
-  realtype abstol = 1e-12;
+  realtype abstol = 1e-08;
 
   /* Call CVodeCreate to create the solver memory and specify the 
    * Backward Differentiation Formula */
@@ -159,28 +160,20 @@ void cCVode::init(sunindextype nvars_, MatrixX1C& yini) {
   initialised = true;
 }
 
-void cCVode::run(realtype tend) {
-  /* In loop, call CVode, print results, and test for error.
-     Break out of loop when NOUT preset output times have been reached.  */
+void cCVode::run(realtype t, realtype tout, MatrixX1C& yout) {
+  // call CVode
+  int retval = CVode(cvode_mem, tout, y, &t, CV_NORMAL);
 
-//  iout = 0;
-//  while(1) {
-  int retval = CVode(cvode_mem, tend, y, &t, CV_NORMAL);
-
+  // check for errors
   check_retval(&retval, "CVode", 1);
-//    if (retval == CV_SUCCESS) {
-//      break;
-//    }
-//  }
   if (retval != CV_SUCCESS) {
     utils::fatal_error("CVode did not succeed", out);
   }
 
   /* Print some final statistics */
   PrintFinalStats(cvode_mem);
-}
 
-void cCVode::get_result(MatrixX1C& yout) {
+  /* store result for passing back */
   for (sunindextype i = 0; i < nvars; i++) {
     yout(i) = NV_Ith_S(y, i);
   }

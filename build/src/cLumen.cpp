@@ -21,38 +21,16 @@
 
 #include "global_defs.hpp"
 #include "utils.hpp"
+#ifdef SUNDIALS_SOLVER
 #include "cCVode.hpp"
+#else
+#include "cLSODA.hpp"
+#endif
 #include "cLumen.hpp"
-#include "libsoda/LSODA.h"
 
 
-// function for calling from LSODA
-static void fffunc(tCalcs t, tCalcs* y, tCalcs* ydot, void *data) {
-  cLumen* pt_cLumen = static_cast<cLumen *>(data);
-  int ffvars = pt_cLumen->get_nvars();
-
-  MatrixX1C ymat;
-  ymat.resize(ffvars, Eigen::NoChange);
-  for (int i = 0; i < ffvars; i++) {
-    ymat(i) = y[i];
-  }
-
-  MatrixX1C ydotmat;
-  ydotmat.resize(ffvars, Eigen::NoChange);
-  
-  pt_cLumen->fluid_flow_function(t, ymat, ydotmat);
-  
-  for (int i = 0; i < ffvars; i++) {
-    ydot[i] = ydotmat(i);
-  }
-}
-
-cLumen::cLumen(std::string host_name, int rank, int c_rank, int c_count) {
-  my_rank = rank;
-  cell_count = c_count;
-  cell_rank = c_rank;
-  id = "l1";
-
+cLumen::cLumen(std::string host_name, int rank, int c_rank, int c_count) :
+    id("l1"), my_rank(rank), cell_rank(c_rank), cell_count(c_count), solver_initialised(false) {
   out.open(id + ".out");
   out << "<Lumen> id: " << id << std::endl;
   out << "<Lumen> host_name: " << host_name << std::endl;
@@ -65,10 +43,24 @@ void cLumen::init() {
   prep_cell_calcium();
   load_adjacency_matrix();
   initx();
+  init_solver();
 }
 
 cLumen::~cLumen() {
   out.close();
+  if (solver_initialised) {
+    delete solver;
+  }
+}
+
+void cLumen::init_solver() {
+#ifdef SUNDIALS_SOLVER
+  solver = new cCVode(this, out);
+#else
+  solver = new cLSODA(this, out);
+#endif
+  solver->init(x_ion);
+  solver_initialised = true;
 }
 
 void cLumen::initx() {
@@ -291,12 +283,6 @@ void cLumen::solve_fluid_flow(tCalcs t, tCalcs dt) {
 
   auto start = std::chrono::system_clock::now();
 
-  // transfer input values into required format
-  std::vector<tCalcs> yin(ffvars), yout;
-  for (int i = 0; i < ffvars; i++) {
-    yin[i] = x_ion(i);
-  }
-
   // debugging - TODO: remove for production
   out << "  Initial volumes: ";
   for (int i = 0; i < cell_count; i++) {
@@ -306,19 +292,7 @@ void cLumen::solve_fluid_flow(tCalcs t, tCalcs dt) {
   out << std::endl;
 
   // call the solver
-  int istate = 1;
-  LSODA lsoda;
-  lsoda.lsoda_update(fffunc, ffvars, yin, yout, &t, t + dt, &istate, static_cast<void *>(this), 1e-12, 1e-12);
-  if (istate < 1) {
-    utils::fatal_error("lsoda failed to compute the solution", out);
-  }
-
-  //  extract the results
-//  std::cout << "result:" << std::endl;
-  for (int i = 0; i < ffvars; i++) {
-    x_ion(i) = yout[i + 1];
-//    std::cout << "  x_ion(" << i + 1 << ") = " << x_ion(i) << std::endl;
-  }
+  solver->run(t, t + dt, x_ion);
 
   // debugging - TODO: remove for production
   out << "  Final volumes: ";

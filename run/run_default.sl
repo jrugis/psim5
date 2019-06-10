@@ -11,6 +11,8 @@
 #SBATCH --ntasks=8                 # number of tasks (e.g. MPI)
 #SBATCH --switches=1@0:10:00       # run on one infiniband switch, wait for 10 minutes
 
+ml SUNDIALS/4.1.0-gimkl-2018b
+
 echo $HOSTNAME
 echo "task array id: $SLURM_ARRAY_TASK_ID"
 
