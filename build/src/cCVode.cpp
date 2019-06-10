@@ -161,8 +161,17 @@ void cCVode::init(MatrixX1C& yini) {
 }
 
 void cCVode::run(realtype t, realtype tout, MatrixX1C& yout) {
+  int retval;
+
+  // reinit CVode
+  for (sunindextype i = 0; i < nvars; i++) {
+    NV_Ith_S(y, i) = yout(i);
+  }
+  retval = CVodeReInit(cvode_mem, t, y);
+  check_retval(&retval, "CVodeReinit", 1);
+
   // call CVode
-  int retval = CVode(cvode_mem, tout, y, &t, CV_NORMAL);
+  retval = CVode(cvode_mem, tout, y, &t, CV_NORMAL);
 
   // check for errors
   check_retval(&retval, "CVode", 1);
