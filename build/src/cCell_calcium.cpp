@@ -349,6 +349,15 @@ void cCell_calcium::make_matrices(){
     int this_tri = mesh->basal_triangles(n);
     surface_region_data[AREA_basal] += surface_data(this_tri, AREA_s);
   }
+
+  // --------------------------------
+  // at rest volume
+  // --------------------------------
+  volume_at_rest = 0.0;
+  for (int n = 0; n < mesh->tetrahedrons_count; n++) {
+    volume_at_rest += element_data(n, VOL_e);
+  }
+  out << "<Cell_x> volume at rest = " << volume_at_rest << std::endl;
 }
 
 Array1VC cCell_calcium::get_apical_reactions(tCalcs c, tCalcs ip, tCalcs ce, tCalcs h){
@@ -391,6 +400,9 @@ Array1VC cCell_calcium::get_body_reactions(tCalcs c, tCalcs ip, tCalcs ce, tCalc
   reactions(1) = vplc - vdeg;
   reactions(2) = -reactions(0) / p[Gamma];
 
+  // scale reaction terms by (at_rest_volume / new_volume)
+  reactions *= volume_scaling;
+
   return reactions;
 }
 
@@ -427,9 +439,10 @@ MatrixX1C cCell_calcium::make_load(tCalcs dt, bool plc){
         tCalcs(element_data(n, RYR_e)), tCalcs(plc ? element_data(n, PLC_e) : 0.0));
 
     for(int i = 0; i < 4; i++){ // for each tetrahedron vertex
-      load_c(vi(i)) += element_data(n, VOL_e) * 0.25 * reactions(0); // reaction terms, scaled by 1/4 volume
-      load_ip(vi(i)) += element_data(n, VOL_e) * 0.25 * reactions(1);
-      load_ce(vi(i)) += element_data(n, VOL_e) * 0.25 * reactions(2);
+      // reaction terms, scaled by 1/4 volume
+      load_c(vi(i)) += element_data(n, VOL_e) * 0.25 * (reactions(0) - cell_volume_term * c(vi(i)));
+      load_ip(vi(i)) += element_data(n, VOL_e) * 0.25 * (reactions(1) - cell_volume_term * ip(vi(i)));
+      load_ce(vi(i)) += element_data(n, VOL_e) * 0.25 * (reactions(2) - cell_volume_term * ce(vi(i)));
     }
   }
 
@@ -453,11 +466,9 @@ MatrixX1C cCell_calcium::make_load(tCalcs dt, bool plc){
   }
 
   // the diffusing variables
-//  cell_volume_term = 0;
-  out << "DEBUG: cell_volume_term = " << cell_volume_term << std::endl;
-  load.block(0, 0, np, 1) = load_c - cell_volume_term * c;
-  load.block(np, 0, np, 1) = load_ip + exchange_load_ip - cell_volume_term * ip;
-  load.block(2 * np, 0, np, 1) = load_ce - cell_volume_term * ce;
+  load.block(0, 0, np, 1) = load_c;
+  load.block(np, 0, np, 1) = load_ip + exchange_load_ip;
+  load.block(2 * np, 0, np, 1) = load_ce;
 
   return load;
 }
@@ -638,7 +649,11 @@ void cCell_calcium::lumen_exchange() {
 
   // receive volume back from Lumen
   MPI_Status status;
-  MPI_CHECK(MPI_Recv(&cell_volume_term, 1, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD, &status));
+  MPI_CHECK(MPI_Recv(&cell_volume_terms, 2, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD, &status));
+  // first element is new volume, second is its derivative
+  out << "DEBUG: new cell volume = " << cell_volume_terms[0] << " (at rest = " << volume_at_rest << ")" << std::endl;
+  cell_volume_term = cell_volume_terms[1] / cell_volume_terms[0];
+  volume_scaling = cell_volume_terms[0] / volume_at_rest;
 }
 
 void cCell_calcium::run() {

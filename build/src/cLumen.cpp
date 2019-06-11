@@ -313,13 +313,15 @@ void cLumen::distribute_volume_terms() {
   x_ion_dot.resize(ffvars, Eigen::NoChange);
   fluid_flow_function(0, x_ion, x_ion_dot);
 
-  // send volume terms back to cells
+  // send volume and derivative back to cells
   for (int i = 0; i < cell_count; i++) {
     int dest = cell_rank + i;
     int volume_index = i * INTRAVARS + Vol;
-    tCalcs cell_volume_term = x_ion_dot(volume_index) / x_ion(volume_index);
-    out << "DEBUG: cell_volume_term for cell " << dest << " = " << cell_volume_term << std::endl;
-    MPI_CHECK(MPI_Send(&cell_volume_term, 1, MPI_DOUBLE, dest, LUMEN_CELL_TAG, MPI_COMM_WORLD));
+    tCalcs cell_volume_terms[2];
+    cell_volume_terms[0] = x_ion(volume_index);
+    cell_volume_terms[1] = x_ion_dot(volume_index);
+    out << "DEBUG: cell_volume_terms for cell " << dest << " = " << cell_volume_terms[0] << ", " << cell_volume_terms[1] << std::endl;
+    MPI_CHECK(MPI_Send(cell_volume_terms, 2, MPI_DOUBLE, dest, LUMEN_CELL_TAG, MPI_COMM_WORLD));
   }
 }
 

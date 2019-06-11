@@ -57,7 +57,10 @@ private:
   tCalcs** exchange_send_buffer;  // buffers for exchanging values between connected cells
   tCalcs** exchange_recv_buffer;
   ArrayX1C exchange_load_ip;
-  tCalcs cell_volume_term;  // volume term received from lumen
+  tCalcs cell_volume_terms[2];  // cell volume and its derivative, received from lumen
+  tCalcs cell_volume_term;  // derivative of cell volume divided by cell volume
+  tCalcs volume_scaling;  // scale the volume based on fluid flow model
+  tCalcs volume_at_rest;  // volume of cell at rest
 
   Eigen::Array<tCalcs, Eigen::Dynamic, MODELECOUNT> element_data;
   Eigen::Array<tCalcs, Eigen::Dynamic, MODELSCOUNT> surface_data;
