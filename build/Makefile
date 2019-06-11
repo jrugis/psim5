@@ -61,9 +61,6 @@ cLumen.o: $(SRC)/cLumen.cpp $(SRC)/cLumen.hpp $(SRC)/utils.hpp $(SRC)/global_def
 cCVode.o: $(SRC)/cCVode.cpp $(SRC)/cCVode.hpp $(SRC)/global_defs.hpp $(SRC)/utils.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
-#cCell_flow.o: $(SRC)/cCell_flow.cpp $(SRC)/cCell_flow.hpp
-#	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
-
 cCell_calcium.o: $(SRC)/cCell_calcium.cpp $(SRC)/cCell_calcium.hpp $(SRC)/cCellMesh.hpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
