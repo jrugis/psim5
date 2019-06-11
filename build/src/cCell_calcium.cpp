@@ -653,7 +653,7 @@ void cCell_calcium::lumen_exchange() {
   // first element is new volume, second is its derivative
   out << "DEBUG: new cell volume = " << cell_volume_terms[0] << " (at rest = " << volume_at_rest << ")" << std::endl;
   cell_volume_term = cell_volume_terms[1] / cell_volume_terms[0];
-  volume_scaling = cell_volume_terms[0] / volume_at_rest;
+  volume_scaling = volume_at_rest / cell_volume_terms[0];
 }
 
 void cCell_calcium::run() {
