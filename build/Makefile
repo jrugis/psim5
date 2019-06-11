@@ -43,7 +43,7 @@ all: $(EXE)
 LSODA.o: $(SRC)/libsoda/LSODA.cpp $(SRC)/libsoda/LSODA.h $(SRC)/libsoda/helper.h
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
-cLSODA.o: $(SRC)/cLSODA.cpp $(SRC)/cLSODA.hpp $(SRC)/libsoda/LSODA.h
+cLSODA.o: $(SRC)/cLSODA.cpp $(SRC)/cLSODA.hpp $(SRC)/libsoda/LSODA.h $(SRC)/cLumen.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
 main.o: $(SRC)/main.cpp $(SRC)/global_defs.hpp $(SRC)/cAcinus.hpp $(SRC)/cCell_calcium.hpp
@@ -58,7 +58,7 @@ cAcinus.o: $(SRC)/cAcinus.cpp $(SRC)/cAcinus.hpp $(SRC)/utils.hpp $(SRC)/global_
 cLumen.o: $(SRC)/cLumen.cpp $(SRC)/cLumen.hpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp $(SRC)/cCVode.hpp $(SRC)/cLSODA.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
-cCVode.o: $(SRC)/cCVode.cpp $(SRC)/cCVode.hpp $(SRC)/global_defs.hpp $(SRC)/utils.hpp
+cCVode.o: $(SRC)/cCVode.cpp $(SRC)/cCVode.hpp $(SRC)/global_defs.hpp $(SRC)/utils.hpp $(SRC)/cLumen.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
 cCell_calcium.o: $(SRC)/cCell_calcium.cpp $(SRC)/cCell_calcium.hpp $(SRC)/cCellMesh.hpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp
