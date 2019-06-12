@@ -30,27 +30,36 @@
 
 
 cLumen::cLumen(std::string host_name, int rank, int c_rank, int c_count) :
-    id("l1"), my_rank(rank), cell_rank(c_rank), cell_count(c_count), solver_initialised(false) {
+    id("l1"), my_rank(rank), cell_rank(c_rank), cell_count(c_count), solver_initialised(false),
+    tstride(1), step(0) {
+  // file for storing standard output
   out.open(id + ".out");
+  out << std::fixed << std::setprecision(15);
   out << "<Lumen> id: " << id << std::endl;
   out << "<Lumen> host_name: " << host_name << std::endl;
-  out << std::fixed << std::setprecision(15);
 
+  // file for storing results (all variable values)
+  vars_file.open(id + "_results.dat");
+  vars_file << std::scientific << std::setprecision(15);
+
+  // load fluid flow parameters
   utils::get_parameters(id, flowParms, 1, p, out);
-}
-
-void cLumen::init() {
-  prep_cell_calcium();
-  load_adjacency_matrix();
-  initx();
-  init_solver();
 }
 
 cLumen::~cLumen() {
   out.close();
+  vars_file.close();
   if (solver_initialised) {
     delete solver;
   }
+}
+
+void cLumen::init(int tstride_) {
+  tstride = tstride_;
+  prep_cell_calcium();
+  load_adjacency_matrix();
+  initx();
+  init_solver();
 }
 
 void cLumen::init_solver() {
@@ -250,7 +259,9 @@ void cLumen::receive_ca_inputs() {
 }
 
 void cLumen::iterate(tCalcs t, tCalcs dt) {
-  out << "<Lumen> iteration: t = " << t << " (dt = " << dt << ")" << std::endl;
+  step++;
+  out << "<Lumen> step: " << step << " current_time: " << t << "s";
+  out << " delta_time: " << dt << "s" << std::endl;
 
   // receive Ca inputs (non-blocking)
   receive_ca_inputs();
@@ -260,6 +271,18 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
 
   // send volume terms back to cells
   distribute_volume_terms();
+
+  // save results (TODO: should do while non-blocking distribute)
+  if(step % tstride == 0) {
+    save_variables();
+  }
+}
+
+void cLumen::save_variables() {
+  for (int i = 0; i < ffvars; i++) {
+    vars_file << x_ion(i) << " ";
+  }
+  vars_file << std::endl;
 }
 
 void cLumen::solve_fluid_flow(tCalcs t, tCalcs dt) {

@@ -31,7 +31,7 @@ class cLumen {
 public:
   cLumen(std::string host_name, int rank, int c_rank, int c_count);
   ~cLumen();
-  void init();
+  void init(int tstride_);
   void iterate(tCalcs t, tCalcs dt);
   void fluid_flow_function(tCalcs t, MatrixX1C &x, MatrixX1C &xdot);
   int get_nvars() { return ffvars; }
@@ -51,9 +51,10 @@ private:
   void lum_adj();
   void matrix_add_upper_to_lower(MatrixXXC &mat);
   void matrix_move_upper_to_lower(MatrixXXC &mat);
+  void save_variables();
 
   std::string id;
-  std::ofstream out;
+  std::ofstream out, vars_file;
   int ffvars;  // number of fluid flow variables
   tCalcs p[FPCOUNT];  // the fluid flow parameters array
   int my_rank, cell_rank, cell_count;
@@ -81,6 +82,8 @@ private:
   cLSODA* solver;
 #endif
   bool solver_initialised;
+  int tstride;
+  int step;
 };
 
 #endif /* CLUMEN_ */

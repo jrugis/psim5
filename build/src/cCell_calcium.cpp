@@ -632,10 +632,6 @@ void cCell_calcium::lumen_exchange() {
         ca_tri += solvec(vertex_index);  // Ca is first
       }
       ca_tri *= third;
-      
-      if (ca_tri <= 0) {
-        out << "WARNING: Ca is negative this will cause nans" << std::endl;
-      }
 
       PrCl += (1.0 / (1.0 + pow(fp[KCaCC] / ca_tri, fp[eta1]))) * area_tri;
     }

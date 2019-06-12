@@ -7,7 +7,6 @@
 #SBATCH --partition=large          # 3 days,  1024 (8424) cores, 3GB
 ##SBATCH --partition=bigmem         # 7 days,  108 (108) cores,   15GB
 #SBATCH --hint=nomultithread       # don't use hyperthreading
-##SBATCH --ntasks=9                 # number of tasks (e.g. MPI)
 #SBATCH --ntasks=8                 # number of tasks (e.g. MPI)
 #SBATCH --switches=1@0:10:00       # run on one infiniband switch, wait for 10 minutes
 
@@ -21,10 +20,11 @@ job_dir=$( head -n $SLURM_ARRAY_TASK_ID dirs.txt | tail -1 )
 echo $job_dir
 
 cd $job_dir
-#srun --ntasks=9 psim5
 srun --ntasks=8 psim5
 rm psim5
 
-ml Python/2.7.14-gimkl-2017a
+ml Python/3.7.3-gimkl-2018b
 srun --ntasks=1 python "summary_plot.py"
 rm summary_plot.py
+srun --ntasks=1 python plot_volumes.py
+rm plot_volumes.py

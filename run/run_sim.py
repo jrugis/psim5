@@ -149,6 +149,7 @@ for p1 in p1_array:
     os.system("chmod 770 psim5")
     os.system("cp " + run_dir + "/" + slurm + " ../run.sl")
     os.system("cp " + run_dir + "/summary_plot.py .")
+    os.system("cp " + run_dir + "/plot_volumes.py .")
     os.system("cp " + run_dir + "/" + finit + " flow_init.dat")
     os.system("cp " + run_dir + "/" + fadj + " flow_adj.dat")
     os.system("cp " + run_dir + "/" + fparms + " l1.dat")
