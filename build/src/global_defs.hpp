@@ -101,6 +101,7 @@ enum model_parameters{ \
 //************************************************************************ 
 // the fluid flow model parameters
 enum fluid_flow_parameters{ \
+  odeSolver, odeSolverAbsTol, odeSolverRelTol, \
   aNkcc1, a1, a2, a3, a4, \
   r, alpha1, aNaK, \
   GtNa, GtK, \

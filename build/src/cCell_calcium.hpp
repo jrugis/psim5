@@ -48,7 +48,7 @@ private:
   std::ofstream out, ca_file, ip3_file, cer_file;
   int cell_number, acinus_rank, lumen_rank;
   cCellMesh* mesh;
-  Eigen::SimplicialLDLT<Eigen::SparseMatrix<tCalcs>> solver;
+  Eigen::SimplicialLDLT<Eigen::SparseMatrix<tCalcs> > solver;
   tCalcs p[PCOUNT]; // the model parameters array
   tCalcs fp[FPCOUNT]; // fluid flow parameters
   std::vector<cfc> cells; // vector of connected cells and face counts

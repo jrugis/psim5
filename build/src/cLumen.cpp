@@ -19,17 +19,14 @@
 
 #include "global_defs.hpp"
 #include "utils.hpp"
-#ifdef SUNDIALS_SOLVER
 #include "cCVode.hpp"
-#else
 #include "cLSODA.hpp"
-#endif
 #include "cLumen.hpp"
 
 
 cLumen::cLumen(std::string host_name, int rank, int c_rank, int c_count) :
     id("l1"), my_rank(rank), cell_rank(c_rank), cell_count(c_count), solver_initialised(false),
-    tstride(1), step(0) {
+    tstride(1), step(0), solver_flag(-1) {
   // file for storing standard output
   out.open(id + ".out");
   out << std::fixed << std::setprecision(6);
@@ -48,7 +45,12 @@ cLumen::~cLumen() {
   out.close();
   vars_file.close();
   if (solver_initialised) {
-    delete solver;
+    if (solver_flag == 0) {
+      delete cvode_solver;
+    }
+    else if (solver_flag == 1) {
+      delete lsoda_solver;
+    }
   }
 }
 
@@ -61,12 +63,21 @@ void cLumen::init(int tstride_) {
 }
 
 void cLumen::init_solver() {
-#ifdef SUNDIALS_SOLVER
-  solver = new cCVode(this, out);
-#else
-  solver = new cLSODA(this, out);
-#endif
-  solver->init(x_ion);
+  // which solver to use
+  solver_flag = static_cast<int>(p[odeSolver]);
+
+  if (solver_flag == 0) {
+    cvode_solver = new cCVode(this, out, p[odeSolverAbsTol], p[odeSolverRelTol]);
+    cvode_solver->init(x_ion);
+  }
+  else if (solver_flag == 1) {
+    lsoda_solver = new cLSODA(this, out, p[odeSolverAbsTol], p[odeSolverRelTol]);
+    lsoda_solver->init(x_ion);
+  }
+  else {
+    utils::fatal_error("Unrecognised value for odeSolver fluid flow parameter", out);
+  }
+
   solver_initialised = true;
 }
 
@@ -287,7 +298,15 @@ void cLumen::solve_fluid_flow(tCalcs t, tCalcs dt) {
   auto start = std::chrono::system_clock::now();
 
   // call the solver
-  solver->run(t, t + dt, x_ion);
+  if (solver_flag == 0) {
+    lsoda_solver->run(t, t + dt, x_ion);
+  }
+  else if (solver_flag == 1) {
+    cvode_solver->run(t, t + dt, x_ion);
+  }
+  else {
+    utils::fatal_error("Unrecognised value for odeSolver fluid flow parameter", out);
+  }
 
   auto end = std::chrono::system_clock::now();
   std::chrono::duration<double> elapsed = end - start;

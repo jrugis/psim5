@@ -39,9 +39,11 @@ static void f(tCalcs t, tCalcs* y, tCalcs* ydot, void *data) {
  *-------------------------------
  */
 
-cLSODA::cLSODA(cLumen* lumen_, std::ofstream& out_) : 
-    lumen(lumen_), out(out_), nvars(0) {
+cLSODA::cLSODA(cLumen* lumen_, std::ofstream& out_, tCalcs abstol_, tCalcs reltol_) :
+    lumen(lumen_), out(out_), nvars(0), abstol(abstol_), reltol(reltol_) {
   out << "<LSODA>: creating LSODA solver" << std::endl;
+  out << " tolerances are " << abstol << " (absolute) and ";
+  out << reltol << " (relative)" << std::endl;
 }
 
 void cLSODA::init(MatrixX1C& y) {
@@ -59,7 +61,7 @@ void cLSODA::run(tCalcs t, tCalcs tout, MatrixX1C& y) {
   // call the solver
   int istate = 1;
   LSODA lsoda;
-  lsoda.lsoda_update(f, nvars, yin, yout, &t, tout, &istate, static_cast<void *>(lumen), 1e-08, 1e-08);
+  lsoda.lsoda_update(f, nvars, yin, yout, &t, tout, &istate, static_cast<void *>(lumen), reltol, abstol);
   if (istate < 1) {
     utils::fatal_error("lsoda failed to compute the solution", out);
   }

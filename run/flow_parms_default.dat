@@ -9,6 +9,15 @@
 #  - parameter lines may have a trailing comment
 #----------------------------------------------------
 #----------------------------------------------------
+# ODE Solver Parameters
+#----------------------------------------------------
+#
+# Solver - 0 = SUNDIALS CVODE, 1 = libsoda (LSODA)
+odeSolver 0
+# Solver tolerances (absolute and relative)
+odeSolverAbsTol 1e-12
+odeSolverRelTol 1e-12
+#----------------------------------------------------
 # Parameters of the Model
 #----------------------------------------------------
 #

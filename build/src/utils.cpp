@@ -45,6 +45,7 @@ void utils::get_parameters(const std::string file_id, int ptype, int cell_num, t
 
   // fluid flow parameters
   std::string fpnames[FPCOUNT] = { \
+    "odeSolver", "odeSolveAbsTol", "odeSolverRelTol", \
     "aNkcc1", "a1", "a2", "a3", "a4", \
     "r", "alpha1", "aNaK", \
     "GtNa", "GtK", \

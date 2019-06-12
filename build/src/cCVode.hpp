@@ -17,7 +17,7 @@ class cLumen;
 
 class cCVode {
   public:
-    cCVode(cLumen* lumen_, std::ofstream& out_);
+    cCVode(cLumen* lumen_, std::ofstream& out_, realtype abstol_, realtype reltol_);
     ~cCVode();
     void init(MatrixX1C& yini);
     void run(realtype t, realtype tend, MatrixX1C& yout);
@@ -32,9 +32,11 @@ class cCVode {
     SUNMatrix A;
     SUNLinearSolver LS;
     void *cvode_mem;
+    realtype abstol, reltol;
 
     void check_retval(void *returnvalue, std::string funcname, int opt);
-    void PrintFinalStats(void *cvode_mem);
+    void PrintFinalStatsBrief(void *cvode_mem);
+    void PrintFinalStatsDetailed(void *cvode_mem);
 };
 
 #endif
