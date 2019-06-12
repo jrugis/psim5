@@ -646,8 +646,8 @@ void cCell_calcium::lumen_exchange() {
   // receive volume back from Lumen
   MPI_Status status;
   MPI_CHECK(MPI_Recv(&cell_volume_terms, 2, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD, &status));
+
   // first element is new volume, second is its derivative
-  out << "DEBUG: new cell volume = " << cell_volume_terms[0] << " (at rest = " << volume_at_rest << ")" << std::endl;
   cell_volume_term = cell_volume_terms[1] / cell_volume_terms[0];
   volume_scaling = volume_at_rest / cell_volume_terms[0];
 }

@@ -24,7 +24,6 @@ CPP = mpicxx
 
 ## optimised
 CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -march=native -mtune=native -Wall -g
-#CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O0 -Wall -g
 
 ###########################################################################################
 ## program

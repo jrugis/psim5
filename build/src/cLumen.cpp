@@ -5,8 +5,6 @@
  *      Author: jrugis
  */
 
-//#define DEBUG_LUMEN
-
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -34,7 +32,7 @@ cLumen::cLumen(std::string host_name, int rank, int c_rank, int c_count) :
     tstride(1), step(0) {
   // file for storing standard output
   out.open(id + ".out");
-  out << std::fixed << std::setprecision(15);
+  out << std::fixed << std::setprecision(6);
   out << "<Lumen> id: " << id << std::endl;
   out << "<Lumen> host_name: " << host_name << std::endl;
 
@@ -286,44 +284,10 @@ void cLumen::save_variables() {
 }
 
 void cLumen::solve_fluid_flow(tCalcs t, tCalcs dt) {
-#ifdef DEBUG_LUMEN
-  { // DEBUGGING - call function once and print result
-    out << "DEBUGXXX" << std::endl;
-    MatrixX1C x_ion_dot;
-    x_ion_dot.resize(ffvars, Eigen::NoChange);
-    fluid_flow_function(t, x_ion, x_ion_dot);
-    std::ofstream dbgfile;
-    dbgfile.open("ffres.txt");
-    dbgfile << std::fixed << std::setprecision(15);
-    for (int i = 0; i < ffvars; i++) {
-      dbgfile << "xdot(" << i + 1 << ") = " << x_ion_dot(i) << std::endl;
-    }
-    dbgfile.close();
-    
-//    utils::fatal_error("stopping for debugging", out);
-  }
-#endif
-
   auto start = std::chrono::system_clock::now();
-
-  // debugging - TODO: remove for production
-  out << "  Initial volumes: ";
-  for (int i = 0; i < cell_count; i++) {
-    out << x_ion(i * INTRAVARS + Vol);
-    out << " ";
-  }
-  out << std::endl;
 
   // call the solver
   solver->run(t, t + dt, x_ion);
-
-  // debugging - TODO: remove for production
-  out << "  Final volumes: ";
-  for (int i = 0; i < cell_count; i++) {
-    out << x_ion(i * INTRAVARS + Vol);
-    out << " ";
-  }
-  out << std::endl;
 
   auto end = std::chrono::system_clock::now();
   std::chrono::duration<double> elapsed = end - start;
@@ -343,7 +307,6 @@ void cLumen::distribute_volume_terms() {
     tCalcs cell_volume_terms[2];
     cell_volume_terms[0] = x_ion(volume_index);
     cell_volume_terms[1] = x_ion_dot(volume_index);
-    out << "DEBUG: cell_volume_terms for cell " << dest << " = " << cell_volume_terms[0] << ", " << cell_volume_terms[1] << std::endl;
     MPI_CHECK(MPI_Send(cell_volume_terms, 2, MPI_DOUBLE, dest, LUMEN_CELL_TAG, MPI_COMM_WORLD));
   }
 }
@@ -364,78 +327,6 @@ void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x, MatrixX1C &xdot) {
 
   // Set the intracellular concentration differential equations
   ieq(xdot);
-
-# ifdef DEBUG_LUMEN
-  { // DEBUGGING
-    std::ofstream dbg;
-    dbg.open("JtNa.out");
-    dbg << std::fixed << std::setprecision(15);
-    for (int i = 0; i < 7; i++) {
-      for (int j = 0; j < 7; j++) {
-        dbg << JtNa(i, j) << " ";
-      }
-      dbg << std::endl;
-    }
-    dbg.close();
-    
-    dbg.open("JtK.out");
-    dbg << std::fixed << std::setprecision(15);
-    for (int i = 0; i < 7; i++) {
-      for (int j = 0; j < 7; j++) {
-        dbg << JtK(i, j) << " ";
-      }
-      dbg << std::endl;
-    }
-    dbg.close();
-
-    dbg.open("JCl.out");
-    dbg << std::fixed << std::setprecision(15);
-    for (int i = 0; i < 7; i++) {
-      for (int j = 0; j < 7; j++) {
-        dbg << JCl(i, j) << " ";
-      }
-      dbg << std::endl;
-    }
-    dbg.close();
-
-    dbg.open("Qa.out");
-    dbg << std::fixed << std::setprecision(15);
-    for (int i = 0; i < 7; i++) {
-      for (int j = 0; j < 7; j++) {
-        dbg << Qa(i, j) << " ";
-      }
-      dbg << std::endl;
-    }
-    dbg.close();
-
-    dbg.open("Qtot.out");
-    dbg << std::fixed << std::setprecision(15);
-    for (int i = 0; i < 7; i++) {
-      for (int j = 0; j < 7; j++) {
-        dbg << Qtot(i, j) << " ";
-      }
-      dbg << std::endl;
-    }
-    dbg.close();
-
-    dbg.open("JCL.out");
-    dbg << std::fixed << std::setprecision(15);
-    for (int i = 0; i < 7; i++) {
-      dbg << JCL(i) << std::endl;
-    }
-    dbg.close();
-
-    dbg.open("Jb.out");
-    dbg << std::fixed << std::setprecision(15);
-    for (int i = 0; i < 7; i++) {
-      for (int j = 0; j < 9; j++) {
-        dbg << Jb(i, j) << " ";
-      }
-      dbg << std::endl;
-    }
-    dbg.close();
-  }
-#endif
 
   // Set the lumenal concentration equations
   // Use adjacency matrix for connectivity of the lumen.
