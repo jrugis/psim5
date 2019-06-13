@@ -5,6 +5,7 @@
  *      Author: jrugis
  */
 
+#include <mpi.h>
 #include <boost/tokenizer.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -18,6 +19,7 @@ void utils::fatal_error(const std::string msg, std::ofstream& out){
   std::string m = "ERROR: " + msg;
   out << m << std::endl; out.close();
   std::cerr << m << std::endl;
+  MPI_CHECK(MPI_Abort(MPI_COMM_WORLD, 1));  // make sure the whole program fails
   exit(1);
 }
 
@@ -45,7 +47,7 @@ void utils::get_parameters(const std::string file_id, int ptype, int cell_num, t
 
   // fluid flow parameters
   std::string fpnames[FPCOUNT] = { \
-    "odeSolver", "odeSolveAbsTol", "odeSolverRelTol", \
+    "odeSolver", "odeSolverAbsTol", "odeSolverRelTol", \
     "aNkcc1", "a1", "a2", "a3", "a4", \
     "r", "alpha1", "aNaK", \
     "GtNa", "GtK", \

@@ -66,9 +66,11 @@ static int f(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
 cCVode::cCVode(cLumen* lumen_, std::ofstream& out_, realtype abstol_, realtype reltol_) :
     lumen(lumen_), out(out_), initialised(false), nvars(0), abstol(abstol_),
     reltol(reltol_) {
+  out << std::scientific;
   out << "<CVode>: creating CVode solver" << std::endl;
   out << " tolerances are " << abstol << " (absolute) and ";
   out << reltol << " (relative)" << std::endl;
+  out << std::fixed;
   y = NULL;
   A = NULL;
   LS = NULL;
@@ -183,7 +185,7 @@ void cCVode::PrintFinalStatsBrief(void *cvode_mem)
   retval = CVodeGetNumRhsEvals(cvode_mem, &nfe);
   check_retval(&retval, "CVodeGetNumRhsEvals", 1);
 
-  out << "Solver Statistics: ";
+  out << "<cCVode> solver statistics: ";
   out << "num_steps = " << nfe << " num_func_calls = " << nfe << std::endl;
 }
 

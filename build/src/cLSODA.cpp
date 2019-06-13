@@ -41,9 +41,11 @@ static void f(tCalcs t, tCalcs* y, tCalcs* ydot, void *data) {
 
 cLSODA::cLSODA(cLumen* lumen_, std::ofstream& out_, tCalcs abstol_, tCalcs reltol_) :
     lumen(lumen_), out(out_), nvars(0), abstol(abstol_), reltol(reltol_) {
+  out << std::scientific;
   out << "<LSODA>: creating LSODA solver" << std::endl;
   out << " tolerances are " << abstol << " (absolute) and ";
   out << reltol << " (relative)" << std::endl;
+  out << std::fixed;
 }
 
 void cLSODA::init(MatrixX1C& y) {

@@ -26,7 +26,7 @@
 
 cLumen::cLumen(std::string host_name, int rank, int c_rank, int c_count) :
     id("l1"), my_rank(rank), cell_rank(c_rank), cell_count(c_count), solver_initialised(false),
-    tstride(1), step(0), solver_flag(-1), cvode_solver(NULL), lsoda_solver(NULL) {
+    tstride(1), step(0), solver_flag(-1), cvode_solver(nullptr), lsoda_solver(nullptr) {
   // file for storing standard output
   out.open(id + ".out");
   out << std::fixed << std::setprecision(6);
@@ -299,10 +299,10 @@ void cLumen::solve_fluid_flow(tCalcs t, tCalcs dt) {
 
   // call the solver
   if (solver_flag == 0) {
-    lsoda_solver->run(t, t + dt, x_ion);
+    cvode_solver->run(t, t + dt, x_ion);
   }
   else if (solver_flag == 1) {
-    cvode_solver->run(t, t + dt, x_ion);
+    lsoda_solver->run(t, t + dt, x_ion);
   }
   else {
     utils::fatal_error("Unrecognised value for odeSolver fluid flow parameter", out);
