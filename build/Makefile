@@ -31,7 +31,6 @@ CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -march=native -mtune=native -W
 ## Mahuika
 #CPP_INCLUDES = -I/usr/include
 CPP_LIBS = -lsundials_cvode -lsundials_nvecserial
-CPP_DEFS += -DSUNDIALS_SOLVER
 
 EXE = ../run/psim5
 OBJS = main.o utils.o cAcinus.o cCell_calcium.o cCellMesh.o cLumen.o LSODA.o cLSODA.o cCVode.o

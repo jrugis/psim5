@@ -56,8 +56,6 @@ private:
   tCalcs p[FPCOUNT];  // the fluid flow parameters array
   int my_rank, cell_rank, cell_count;
   int num_compartments;  // number of lumenal compartments (from meshes)
-  tCalcs na; // sodium
-  tCalcs k;  // patasium 
   std::vector<std::vector<int> > neigh;  // connectivity between cells
   std::vector<std::vector<int> > neigh_clust;  // one sided connectivity between cells
   std::vector<std::vector<tCalcs> > apical_area_ratios;  // for each cell the ratios of areas of connected apical to total apical
@@ -73,12 +71,12 @@ private:
   ArrayXXC JtNad, JtKd, JCld, Qtotd, Nald, Kld, Clld;  // luminal structure equations
   ArrayXXC QwNa, QwK, QwCl;  // water/ion influx
   Eigen::ArrayXXi adj;  // adjacency matrix
+  bool solver_initialised;
+  int tstride;  // how often to store results to file
+  int step;  // step number of the simulation
+  int solver_flag;  // choose the solver
   cCVode* cvode_solver;
   cLSODA* lsoda_solver;
-  bool solver_initialised;
-  int tstride;
-  int step;
-  int solver_flag;
 };
 
 #endif /* CLUMEN_ */

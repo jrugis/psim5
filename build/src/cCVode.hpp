@@ -27,7 +27,6 @@ class cCVode {
     std::ofstream& out;
     bool initialised;
     sunindextype nvars;
-    realtype t;
     N_Vector y;
     SUNMatrix A;
     SUNLinearSolver LS;
