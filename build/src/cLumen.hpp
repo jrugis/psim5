@@ -38,7 +38,6 @@ private:
   void init_solver();
   void receive_ca_inputs();
   void solve_fluid_flow(tCalcs t, tCalcs dt);
-  void distribute_volume_terms();
   void load_adjacency_matrix();
   void prep_cell_calcium();
   void var(MatrixX1C &x);

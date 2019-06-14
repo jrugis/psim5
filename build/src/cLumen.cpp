@@ -83,7 +83,6 @@ void cLumen::init_solver() {
 
 void cLumen::initx() {
   // load initial conditions
-  // TODO: currently just loading the txt file, may need to be changed
   out << "<Lumen> intialising variable matrices" << std::endl;
 
   // number of variables of the system
@@ -278,13 +277,30 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
   // solve fluid flow
   solve_fluid_flow(t, dt);
 
-  // send volume terms back to cells
-  distribute_volume_terms();
+  // compute derivate at solution point too (required for volume term)
+  MatrixX1C x_ion_dot;
+  x_ion_dot.resize(ffvars, Eigen::NoChange);
+  fluid_flow_function(0, x_ion, x_ion_dot);
 
-  // save results (TODO: should do while non-blocking distribute)
+  // send volume and derivative back to cells (non-blocking)
+  tCalcs cell_volume_terms[2 * cell_count];
+  MPI_Request send_requests[cell_count];
+  for (int i = 0; i < cell_count; i++) {
+    int dest = cell_rank + i;
+    int volume_index = i * INTRAVARS + Vol;
+    cell_volume_terms[2 * i    ] = x_ion(volume_index);
+    cell_volume_terms[2 * i + 1] = x_ion_dot(volume_index);
+    MPI_CHECK(MPI_Isend(&cell_volume_terms[2 * i], 2, MPI_DOUBLE, dest, LUMEN_CELL_TAG, MPI_COMM_WORLD, &send_requests[i]));
+  }
+
+  // save results (while waiting for sends to complete)
   if(step % tstride == 0) {
     save_variables();
   }
+
+  // wait for all sends to complete
+  MPI_Status send_statuses[cell_count];
+  MPI_CHECK(MPI_Waitall(cell_count, send_requests, send_statuses));
 }
 
 void cLumen::save_variables() {
@@ -311,23 +327,6 @@ void cLumen::solve_fluid_flow(tCalcs t, tCalcs dt) {
   auto end = std::chrono::system_clock::now();
   std::chrono::duration<double> elapsed = end - start;
   out << "<Lumen> solver duration: " << elapsed.count() << "s"<< std::endl;
-}
-
-void cLumen::distribute_volume_terms() {
-  // compute derivate at solution point too (required for volume term)
-  MatrixX1C x_ion_dot;
-  x_ion_dot.resize(ffvars, Eigen::NoChange);
-  fluid_flow_function(0, x_ion, x_ion_dot);
-
-  // send volume and derivative back to cells
-  for (int i = 0; i < cell_count; i++) {
-    int dest = cell_rank + i;
-    int volume_index = i * INTRAVARS + Vol;
-    tCalcs cell_volume_terms[2];
-    cell_volume_terms[0] = x_ion(volume_index);
-    cell_volume_terms[1] = x_ion_dot(volume_index);
-    MPI_CHECK(MPI_Send(cell_volume_terms, 2, MPI_DOUBLE, dest, LUMEN_CELL_TAG, MPI_COMM_WORLD));
-  }
 }
 
 void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x, MatrixX1C &xdot) {
