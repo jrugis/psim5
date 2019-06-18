@@ -645,7 +645,7 @@ void cCell_calcium::lumen_exchange() {
 
   // receive volume back from Lumen
   MPI_Status status;
-  MPI_CHECK(MPI_Recv(&cell_volume_terms, 2, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD, &status));
+  MPI_CHECK(MPI_Recv(&cell_volume_terms[0], 2, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD, &status));
 
   // first element is new volume, second is its derivative
   cell_volume_term = cell_volume_terms[1] / cell_volume_terms[0];
@@ -681,7 +681,7 @@ void cCell_calcium::run() {
     }
 
     // not done
-    out << std::fixed << std::setprecision(3);
+    out << std::fixed << std::setprecision(6);
     out << "<Cell_x> step: " << step << " current_time: " << current_time << "s";
     out << " delta_time: " << delta_time << "s" << std::endl;
     plc = ((current_time >= p[PLCsrt]) and (current_time <= p[PLCfin])); // PLC on or off?
@@ -710,7 +710,7 @@ void cCell_calcium::run() {
 	}
     clock_gettime(CLOCK_REALTIME, &end);
 	elapsed = (end.tv_sec - start.tv_sec) + ((end.tv_nsec - start.tv_nsec) / 1000000000.0);
-	out << std::fixed << std::setprecision(3);
+	out << std::fixed << std::setprecision(6);
 	out << "<Cell_x> solver duration: " << elapsed << "s"<< std::endl;
 
     // check solver error and send it to acinus
