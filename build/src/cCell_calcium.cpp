@@ -627,8 +627,8 @@ void cCell_calcium::lumen_exchange() {
 
       // average Ca at this triangle
       tCalcs ca_tri = 0.0;
-      for (int j = 0; j < 3; j++) {
-        int vertex_index = mesh->surface_triangles(this_tri, j);
+      for (int k = 0; k < 3; k++) {
+        int vertex_index = mesh->surface_triangles(this_tri, k);
         ca_tri += solvec(vertex_index);  // Ca is first
       }
       ca_tri *= third;
