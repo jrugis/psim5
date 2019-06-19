@@ -113,11 +113,11 @@ void cCell_calcium::lumen_prep() {
   // send to Lumen the number of neighbours and "neigh" list
   int num_neigh = cells_apical.size();
   MPI_CHECK(MPI_Send(&num_neigh, 1, MPI_INT, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
-  int neigh[num_neigh];
+  std::vector<int> neigh(num_neigh);
   for (int i = 0; i < num_neigh; i++) {
     neigh[i] = cells_apical[i].cell;
   }
-  MPI_CHECK(MPI_Send(neigh, num_neigh, MPI_INT, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
+  MPI_CHECK(MPI_Send(neigh.data(), num_neigh, MPI_INT, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
 
   // receive fluid flow parameters from Lumen
   MPI_Status stat;
@@ -544,10 +544,8 @@ void cCell_calcium::exchange() {
 
   int num_connected_cells = cells.size();
 
-  MPI_Request send_requests[num_connected_cells];
-  MPI_Request recv_requests[num_connected_cells];
-
   // for each connected cell, compute the values to exchange and send them (non-blocking)
+  std::vector<MPI_Request> send_requests(num_connected_cells);
   for (int i = 0; i < num_connected_cells; i++) {
     int dest = cells[i].cell + 1;
     int mlength = cells[i].fcount;
@@ -561,6 +559,7 @@ void cCell_calcium::exchange() {
   }
 
   // receive common triangle values back from other cells (non-blocking)
+  std::vector<MPI_Request> recv_requests(num_connected_cells);
   for (int i = 0; i < num_connected_cells; i++) {
     int source = cells[i].cell + 1;
     int mlength = cells[i].fcount;
@@ -572,18 +571,18 @@ void cCell_calcium::exchange() {
   for (int i = 0; i < num_connected_cells; i++) {
     MPI_Status status;
     int recv_index;
-    MPI_CHECK(MPI_Waitany(num_connected_cells, recv_requests, &recv_index, &status));
+    MPI_CHECK(MPI_Waitany(num_connected_cells, recv_requests.data(), &recv_index, &status));
     compute_exchange_load(recv_index);
   }
 
   // wait on send requests (frees memory associated with sends, safe to reuse/free buffers)
-  MPI_Status send_statuses[num_connected_cells];
-  MPI_CHECK(MPI_Waitall(num_connected_cells, send_requests, send_statuses));
+  std::vector<MPI_Status> send_statuses(num_connected_cells);
+  MPI_CHECK(MPI_Waitall(num_connected_cells, send_requests.data(), send_statuses.data()));
 }
 
 void cCell_calcium::lumen_exchange() {
   int num_apical_connected_cells = cells_apical.size();
-  tCalcs exchange_values[num_apical_connected_cells + 1];
+  std::vector<tCalcs> exchange_values(num_apical_connected_cells + 1);
 
   // % Ca2+ Activated K+ Channels open probability
   // PK = sum((1./(1+(par.KCaKC./(Ca{2}{cell_no})).^par.eta2)).*par.Sb_k{cell_no})./par.Sb{cell_no};
@@ -641,7 +640,7 @@ void cCell_calcium::lumen_exchange() {
   }
 
   // send to Lumen
-  MPI_CHECK(MPI_Send(exchange_values, num_apical_connected_cells + 1, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
+  MPI_CHECK(MPI_Send(exchange_values.data(), num_apical_connected_cells + 1, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
 
   // receive volume back from Lumen
   MPI_Status status;

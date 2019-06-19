@@ -113,21 +113,7 @@ void cLumen::initx() {
     utils::fatal_error("not enough lines in flow_init.dat", out);
   }
 
-  // set up variable arrays
-  intra.resize(cell_count, INTRAVARS);
-  Nal.resize(cell_count, cell_count);
-  Kl.resize(cell_count, cell_count);
-  Cll.resize(cell_count, cell_count);
-
-  // set up solution arrays
-  Jb.resize(cell_count, Eigen::NoChange);
-  JCl.resize(cell_count, cell_count);
-  JtNa.resize(cell_count, cell_count);
-  JtK.resize(cell_count, cell_count);
-  Qa.resize(cell_count, cell_count);
-  Qtot.resize(cell_count, cell_count);
-  JCL.resize(cell_count, Eigen::NoChange);
-
+  // set up working arrays
   JtNad_tmp.resize(num_compartments, Eigen::NoChange);
   JtKd_tmp.resize(num_compartments, Eigen::NoChange);
   JCld_tmp.resize(num_compartments, Eigen::NoChange);
@@ -209,6 +195,16 @@ void cLumen::prep_cell_calcium() {
     MPI_CHECK(MPI_Recv(apical_area_ratios[i].data(), num_neigh, MPI_DOUBLE, cell_rank + i, LUMEN_CELL_TAG, MPI_COMM_WORLD, &stat));
   }
 
+  // construct full apical areas array for fluid flow rate calculations
+  Sa_p_full = Array2Cells::Zero();
+  for (int c_no = 0; c_no < cell_count; c_no++) {
+    int num_neigh = neigh[c_no].size();
+    for (int j = 0; j < num_neigh; j++) {
+      int ngh = neigh[c_no][j];
+      Sa_p_full(c_no, ngh) = apical_area_ratios[c_no][j];  // ratio of shared apical area with this neighbour to full apical area
+    }
+  }
+
   // receive info about areas of basal regions of the cells
   basal_areas.resize(cell_count);
   for (int i = 0; i < cell_count; i++) {
@@ -255,15 +251,15 @@ void cLumen::load_adjacency_matrix() {
 
 void cLumen::receive_ca_inputs() {
   // receive Ca inputs (non-blocking)
-  MPI_Request recv_requests[cell_count];
+  std::vector<MPI_Request> recv_requests(cell_count);
   for (int i = 0; i < cell_count; i++) {
     MPI_CHECK(MPI_Irecv(cells_exchange_buffer[i].data(), cells_exchange_buffer[i].size(), MPI_DOUBLE,
           cell_rank + i, LUMEN_CELL_TAG, MPI_COMM_WORLD, &recv_requests[i]));
   }
 
   // wait for data to come in
-  MPI_Status recv_statuses[cell_count];
-  MPI_CHECK(MPI_Waitall(cell_count, recv_requests, recv_statuses));
+  std::vector<MPI_Status> recv_statuses(cell_count);
+  MPI_CHECK(MPI_Waitall(cell_count, recv_requests.data(), recv_statuses.data()));
 }
 
 void cLumen::iterate(tCalcs t, tCalcs dt) {
@@ -283,8 +279,8 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
   fluid_flow_function(0, x_ion, x_ion_dot);
 
   // send volume and derivative back to cells (non-blocking)
-  tCalcs cell_volume_terms[2 * cell_count];
-  MPI_Request send_requests[cell_count];
+  std::vector<tCalcs> cell_volume_terms(2 * cell_count);
+  std::vector<MPI_Request> send_requests(cell_count);
   for (int i = 0; i < cell_count; i++) {
     int dest = cell_rank + i;
     int volume_index = i * INTRAVARS + Vol;
@@ -295,19 +291,24 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
 
   // save results (while waiting for sends to complete)
   if(step % tstride == 0) {
-    save_variables();
+    save_results();
   }
 
   // wait for all sends to complete
-  MPI_Status send_statuses[cell_count];
-  MPI_CHECK(MPI_Waitall(cell_count, send_requests, send_statuses));
+  std::vector<MPI_Status> send_statuses(cell_count);
+  MPI_CHECK(MPI_Waitall(cell_count, send_requests.data(), send_statuses.data()));
 }
 
-void cLumen::save_variables() {
+void cLumen::save_results() {
+  // fluid flow rate
+  tCalcs flow_rate = compute_flow_rate();
+  out << "DEBUG: FLUID FLOW RATE = " << flow_rate << std::endl;
+
+  // save to file, the 113 variables then the flow rate
   for (int i = 0; i < ffvars; i++) {
     vars_file << x_ion(i) << " ";
   }
-  vars_file << std::endl;
+  vars_file << flow_rate << std::endl;
 }
 
 void cLumen::solve_fluid_flow(tCalcs t, tCalcs dt) {
@@ -363,37 +364,27 @@ void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x, MatrixX1C &xdot) {
   }
 }
 
-void cLumen::matrix_add_upper_to_lower(MatrixXXC &mat) {
+void cLumen::matrix_add_upper_to_lower(Array2Cells &mat) {
   // mat = (mat - triu(mat)) + triu(mat)';
   int m = mat.rows();
   int n = mat.cols();
-  if (m != n) {
-    utils::fatal_error("cLumen::matrix_add_upper_to_lower only works for square matrices", out);
-  }
-  else {
-    for (int i = 0; i < m; i++) {
-      for (int j = i + 1; j < n; j++) {
-        mat(j, i) += mat(i, j);
-        mat(i, j) = 0;
-      }
+  for (int i = 0; i < m; i++) {
+    for (int j = i + 1; j < n; j++) {
+      mat(j, i) += mat(i, j);
+      mat(i, j) = 0;
     }
   }
 }
 
-void cLumen::matrix_move_upper_to_lower(MatrixXXC &mat) {
+void cLumen::matrix_move_upper_to_lower(Array2Cells &mat) {
   // mat = triu(mat)';
   int m = mat.rows();
   int n = mat.cols();
-  if (m != n) {
-    utils::fatal_error("cLumen::matrix_move_upper_to_lower only works for square matrices", out);
-  }
-  else {
-    for (int i = 0; i < m; i++) {
-      for (int j = i + 1; j < n; j++) {
-        mat(j, i) = mat(i, j);
-      }
+  for (int i = 0; i < m; i++) {
+    for (int j = i + 1; j < n; j++) {
+      mat(j, i) = mat(i, j);
     }
-  }     
+  }
 }
 
 void cLumen::lum_adj() {
@@ -644,4 +635,33 @@ void cLumen::var(MatrixX1C &x) {
       n++;
     }
   }
+}
+
+tCalcs cLumen::compute_flow_rate() {
+  // set up variable arrays
+  var(x_ion);
+
+  // construct Ii array
+  Array1Cells Ii = 2.0 * (intra.col(Naplus) + intra.col(Kplus) + intra.col(Hplus)) + p[CO20];
+
+  // construct Il array
+  Array2Cells Il = 2.0 * Cll + p[Ul];
+
+  // Il minus Ii
+  Array2Cells IlminIi;
+  for (int i = 0; i < cell_count; i++) {
+    IlminIi.row(i) = Il.row(i) - Ii(i);
+  }
+
+  // construct Qa and Qt arrays
+  Array2Cells Qa = Sa_p_full * p[La] * IlminIi;
+  Array2Cells Qt = Sa_p_full * p[Lt] * (Il - p[Ie]);
+
+  // construct Qtot array
+  Array2Cells Qtot = Qa + Qt;
+
+  // flow is sum of Qtot array
+  tCalcs flow_rate = Qtot.sum();
+
+  return flow_rate;
 }

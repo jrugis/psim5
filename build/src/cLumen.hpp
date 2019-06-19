@@ -20,12 +20,15 @@ enum intracellular_variables{Vol, Naplus, Kplus, Clminus, HCO3minus, Hplus, Va, 
 enum basolateral_fluxes{Qb, JNaK, JNkcc1, JAe4, JNhe1, JBB, JK, Ii, Jwater, BASOFLUXCOUNT};
 
 typedef Eigen::Array<tCalcs, Eigen::Dynamic, Eigen::Dynamic> ArrayXXC;
+typedef Eigen::Array<tCalcs, CELLS_COUNT, 1> Array1Cells;
+typedef Eigen::Array<tCalcs, CELLS_COUNT, CELLS_COUNT> Array2Cells;
 
 class cCVode;
 class cLSODA;
 
 class cLumen {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW  // http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
   cLumen(std::string host_name, int rank, int c_rank, int c_count);
   ~cLumen();
   void init(int tstride_);
@@ -45,9 +48,10 @@ private:
   void fx_ap();
   void ieq(MatrixX1C &xdot);
   void lum_adj();
-  void matrix_add_upper_to_lower(MatrixXXC &mat);
-  void matrix_move_upper_to_lower(MatrixXXC &mat);
-  void save_variables();
+  void matrix_add_upper_to_lower(Array2Cells &mat);
+  void matrix_move_upper_to_lower(Array2Cells &mat);
+  void save_results();
+  tCalcs compute_flow_rate();
 
   std::string id;
   std::ofstream out, vars_file;
@@ -61,11 +65,12 @@ private:
   std::vector<tCalcs> basal_areas;  // for each cell the total area of the basal triangles
   std::vector<std::vector<tCalcs> > cells_exchange_buffer;  // buffer for receiving Ca input values from cells
   MatrixX1C x_ion;  // solution vector
-  MatrixXXC intra;  // intra cellular variables for all cells
-  MatrixXXC Nal, Kl, Cll;  // lumenal variable arrays
-  Eigen::Matrix<tCalcs, Eigen::Dynamic, BASOFLUXCOUNT> Jb;  // basolateral fluxes
-  MatrixXXC JCl, JtNa, JtK, Qa, Qtot;  // apical and tight junctional fluxes
-  MatrixX1C JCL;
+  Eigen::Array<tCalcs, CELLS_COUNT, INTRAVARS> intra;  // intra cellular variables for all cells
+  Array2Cells Nal, Kl, Cll;  // lumenal variable arrays
+  Eigen::Array<tCalcs, CELLS_COUNT, BASOFLUXCOUNT> Jb;  // basolateral fluxes
+  Array2Cells JCl, JtNa, JtK, Qa, Qtot;  // apical and tight junctional fluxes
+  Array1Cells JCL;
+  Array2Cells Sa_p_full;  // array of apical area ratios
   ArrayX1C JtNad_tmp, JtKd_tmp, JCld_tmp, Qtotd_tmp, Nald_tmp, Kld_tmp, Clld_tmp;  // luminal structure equations
   ArrayXXC JtNad, JtKd, JCld, Qtotd, Nald, Kld, Clld;  // luminal structure equations
   ArrayXXC QwNa, QwK, QwCl;  // water/ion influx
