@@ -64,7 +64,7 @@ tCalcs cAcinus::recv() {
 void cAcinus::run() {
   tCalcs t = 0.0;
   tCalcs solver_dt = p[delT];
-  tCalcs prev_dt = solver_dt;
+//  tCalcs prev_dt = solver_dt;
   tCalcs error;
   struct timespec start, end;
   double elapsed;

@@ -291,7 +291,8 @@ void LSODA::lsoda(LSODA_ODE_SYSTEM_TYPE f, const size_t neq, vector<double> &y,
 
     int mxstp0 = 500, mxhnl0 = 10;
 
-    int iflag = 0, lenyh = 0, ihit = 0;
+    size_t lenyh = 0;
+    int iflag = 0, ihit = 0;
 
     double atoli = 0, ayi = 0, big = 0, h0 = 0, hmax = 0, hmx = 0, rh = 0,
            rtoli = 0, tcrit = 0, tdist = 0, tnext = 0, tol = 0, tolsf = 0, tp = 0,
