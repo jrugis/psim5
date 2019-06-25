@@ -4,6 +4,8 @@ import time
 import subprocess
 import sys
 
+SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
+
 ##################################################################
 # functions
 ##################################################################
@@ -49,8 +51,8 @@ def replace_line(fname, s1, s2):
   s2_found = (s2 == "")
   if (s1_found & s2_found): return  # do nothing if no parameters
 
-  s1_parm = s1.strip().split()[0] # first paramter name
-  if not s2_found: s2_parm = s2.strip().split()[0] # second paramter name
+  s1_parm = s1.strip().split()[0] # first parameter name
+  if not s2_found: s2_parm = s2.strip().split()[0] # second parameter name
 
   ftemp_name = "temp.dat"
   ftemp = open(ftemp_name, "w")
@@ -78,6 +80,14 @@ def replace_line(fname, s1, s2):
     quit()
   return
 
+def replace_script_dir(fname):
+  with open(fname) as fh:
+    lines = fh.readlines()
+  for i, line in enumerate(lines):
+    if "SCRIPT_DIR" in line:
+      lines[i] = line.replace("SCRIPT_DIR", SCRIPT_DIR)
+  with open(fname, "w") as fh:
+    fh.write("".join(lines))
 
 ##################################################################
 # main program
@@ -148,8 +158,7 @@ for p1 in p1_array:
     os.system("cp " + run_dir + "/psim5 .")
     os.system("chmod 770 psim5")
     os.system("cp " + run_dir + "/" + slurm + " ../run.sl")
-    os.system("cp " + run_dir + "/summary_plot.py .")
-    os.system("cp " + run_dir + "/plot_volumes.py .")
+    replace_script_dir("../run.sl")
     os.system("cp " + run_dir + "/" + finit + " flow_init.dat")
     os.system("cp " + run_dir + "/" + fadj + " flow_adj.dat")
     os.system("cp " + run_dir + "/" + fparms + " l1.dat")

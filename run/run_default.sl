@@ -24,7 +24,4 @@ srun --ntasks=8 psim5
 rm psim5
 
 ml Python/3.7.3-gimkl-2018b
-srun --ntasks=1 python "summary_plot.py"
-rm summary_plot.py
-srun --ntasks=1 python plot_volumes.py
-rm plot_volumes.py
+srun --ntasks=1 python "SCRIPT_DIR/summary_plot.py"

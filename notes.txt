@@ -29,6 +29,8 @@ Run
 ---
 cd psim5/run
 
+make
+
 cp run_default.sl my_run_xxxx.sl
 cp flow_parms_default.dat my_flow_parms_xxxx.dat
 cp flow_init_default.dat my_flow_init_xxxx.dat
