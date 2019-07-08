@@ -63,5 +63,7 @@ for cell in range(NUMCELLS):
     ax.plot(x, y, label="Cell {}".format(cell + 1))
 
 ax.legend(loc='best')
+ax.set_xlabel('Time (s)')
+ax.set_ylabel('Volume ($\mu$m$^3$)')
 
 fig.savefig("volumes_plot.pdf")
