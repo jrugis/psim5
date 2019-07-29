@@ -193,11 +193,6 @@ void get_plot_data(std::string file_name, int ntime, struct Mesh& mesh, float* r
     for (int t = 0; t < ntime; t++) {
       // load value at each node for this time point
       result_file.read(reinterpret_cast<char*>(buffer), np * sizeof(float));
-      
-//      for (int i = 0; i < np; i++) {
-//        float f32;
-//        result_file.read(reinterpret_cast<char*>(&f32), 1);
-
 
       if (result_file) {
         // get values at apical tets

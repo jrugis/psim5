@@ -48,32 +48,6 @@ def get_data_fluid_flow(ntime):
 
   return volumes, ffr
 
-def get_data(fname, rows, cols):
-  if _lib is None:
-    data = get_data_py(dname + '_' + dtype + ".bin", nodes, x.shape[0])
-  else:
-    data = get_data_c(dname + '_' + dtype + ".bin", nodes, x.shape[0])
-  return data
-
-## read in a simulation data file
-def get_data_c(fname, rows, cols):
-  data = np.zeros((2, cols), dtype=np.float32)
-  _lib.get_data(fname.encode("utf-8"), rows, cols, data)
-  return data
-
-## read in a simulation data file
-def get_data_py(fname, rows, cols):
-  f1 = open(fname, "rb")
-  data = np.zeros((2, cols), dtype=np.float32)
-  buf = np.zeros(rows, dtype=np.float32)
-  for c in range(cols):     # the data is in column order
-    for r in range(rows):
-      buf[r] = struct.unpack('f', f1.read(4))[0]
-    data[0, c] = buf.min()
-    data[1, c] = buf.max()
-  f1.close()
-  return data
-
 ## get the time values associated with the saved data
 def get_time_vals(fname):
   f = open(fname + ".dat", "r") # get the saved data stride
@@ -113,8 +87,9 @@ print("create summary plot")
 nplots = len(dtypes) + 1 if plot_ffr else len(dtypes)
 fig, plots = plt.subplots(nplots, ncells, sharex='col', squeeze=False)
 plt.subplots_adjust(wspace = 0.5)
-fig.set_size_inches(ncells * 3.8, nplots * 2.5)
-fig.text(0.02, 0.96, os.getcwd(), fontsize=10)
+#fig.set_size_inches(ncells * 3.8, nplots * 2.5)
+fig.set_size_inches(ncells * 7.6, nplots * 5.0)
+fig.text(0.02, 0.96, os.getcwd(), fontsize=12)
 
 x = get_time_vals("a1") # get the x-axis time values
 volumes, ffr = get_data_fluid_flow(x.shape[0])
@@ -153,4 +128,4 @@ if plot_ffr:
   plots[-1, 0].set_xlabel(" time (s)")
   plots[-1, 0].set_ylabel(" Flow rate ($\mu m^3$/sec)")
 
-fig.savefig("summary_plot.pdf")
+fig.savefig("summary_plot2.pdf")
