@@ -734,5 +734,6 @@ void cCell_calcium::save_results(std::ofstream &data_file, int var){
   float* fbuf = new float[np];
   for(int n=0; n<np; n++) fbuf[n] = solvec[var*np + n]; // convert to float for reduced file size
   data_file.write(reinterpret_cast<char*>(fbuf), np * sizeof(float));
+  delete [] fbuf;
 }
 
