@@ -1,6 +1,7 @@
 // library for loading data for the summary plot
 
 #include <vector>
+#include <set>
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -32,12 +33,8 @@ struct Mesh {
 //  Eigen::Array<int, Eigen::Dynamic, 1> basal_triangles; // surface triangle indicies
   Eigen::Array<double, Eigen::Dynamic, 1> dfa; // distance from apical (per element)
   Eigen::Array<double, Eigen::Dynamic, 1> dfb; // distance from basal (per element)
-  std::vector<int> apical_tets;
-  std::vector<int> basal_tets;
-  double apical_vol;
-  double basal_vol;
-  std::vector<double> apical_tets_vol;
-  std::vector<double> basal_tets_vol;
+  std::set<int> apical_nodes;  // list of unique nodes belonging to apical tets
+  std::set<int> basal_nodes;  // list of unique nodes belonging to basal tets
 };
 
 
@@ -66,7 +63,7 @@ void load_mesh(std::string file_name, struct Mesh& mesh){
   // get the mesh vertices (int32 count, 3x-float32 vertices) 
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
   mesh.vertices_count = i32;
-  std::cout << "  Number of vertices = " << mesh.vertices_count << std::endl;
+  std::cout << "  Number of nodes = " << mesh.vertices_count << std::endl;
   mesh.vertices.resize(mesh.vertices_count, Eigen::NoChange);
   for(int n=0; n<mesh.vertices_count; n++){
     for(int m=0; m<3; m++){
@@ -128,56 +125,27 @@ void load_mesh(std::string file_name, struct Mesh& mesh){
   }
   cell_file.close();
 
-  // get the apical/basal tets
-  mesh.apical_tets.resize(mesh.tetrahedrons_count);
-  mesh.basal_tets.resize(mesh.tetrahedrons_count);
-  mesh.apical_tets_vol.resize(mesh.tetrahedrons_count);
-  mesh.basal_tets_vol.resize(mesh.tetrahedrons_count);
-  mesh.apical_vol = 0;
-  mesh.basal_vol = 0;
-  int nbasal = 0;
-  int napical = 0;
+  // get the apical/basal nodes
   for (int n = 0; n < mesh.tetrahedrons_count; n++) {
     // volume of tet
     Eigen::Matrix<int,1,4> vi;      // tetrahedron vertex indices
     vi = mesh.tetrahedrons.block<1,4>(n, 0);
 
-    Eigen::Matrix<double,4,3> vert; // tetrahedron vertex coordinates
-    for(int i = 0; i < 4; i++)
-      vert.block<1,3>(i, 0) = mesh.vertices.block<1,3>(int(vi(i)), 0); // why is typecast needed???
-
-    Eigen::Matrix<double,3,3> J;    // tetrahedron edge vectors
-    for(int i = 0; i < 3; i++)
-      J.block<1,3>(i, 0) = vert.block<1,3>(i + 1, 0) - vert.block<1,3>(0, 0);
-    double V, Vx6;                  // tetrahedron volume, (6x) volume
-    Vx6 = J.determinant();
-    V = Vx6 / 6.0;
-
     // apical or basal?
     if (mesh.dfa(n) < APICAL_CUTOFF) {
-      mesh.apical_tets_vol[napical] = V;
-      mesh.apical_tets[napical++] = n;
-      mesh.apical_vol += V;
+      for (int i = 0; i < 4; i++) {
+        mesh.apical_nodes.insert(vi(i));
+      }
     }
     if (mesh.dfb(n) < BASAL_CUTOFF) {
-      mesh.basal_tets_vol[napical] = V;
-      mesh.basal_tets[nbasal++] = n;
-      mesh.basal_vol += V;
+      for (int i = 0; i < 4; i++) {
+        mesh.basal_nodes.insert(vi(i));
+      }
     }
 
   }
-  mesh.apical_tets.resize(napical);
-  mesh.basal_tets.resize(nbasal);
-  mesh.apical_tets_vol.resize(napical);
-  mesh.basal_tets_vol.resize(nbasal);
-}
-
-float get_tet_value(struct Mesh& mesh, int index, float* node_values) {
-  Eigen::Array<int,1,4> vi;      // tetrahedron vertex indices
-  vi = mesh.tetrahedrons.block<1,4>(index, 0);
-  float vav  = 0.25 * (node_values[vi(0)]  + node_values[vi(1)]  + node_values[vi(2)]  + node_values[vi(3)]);
-
-  return vav;
+  std::cout << "  Number of apical nodes " << mesh.apical_nodes.size() << std::endl;
+  std::cout << "  Number of basal nodes " << mesh.basal_nodes.size() << std::endl;
 }
 
 void get_plot_data(std::string file_name, int ntime, struct Mesh& mesh, float* result_apical, float* result_basal) {
@@ -186,32 +154,25 @@ void get_plot_data(std::string file_name, int ntime, struct Mesh& mesh, float* r
   std::ifstream result_file(file_name.c_str(), std::ios::in | std::ios::binary); // open the mesh file
   if (result_file) {
     int np = mesh.vertices_count;
-    int na = mesh.apical_tets.size();
-    int nb = mesh.basal_tets.size();
-    float *buffer = new float[np];
+    std::vector<float> buffer(np);
     // loop over time steps
     for (int t = 0; t < ntime; t++) {
       // load value at each node for this time point
-      result_file.read(reinterpret_cast<char*>(buffer), np * sizeof(float));
+      result_file.read(reinterpret_cast<char*>(buffer.data()), np * sizeof(float));
 
       if (result_file) {
-        // get values at apical tets
+        // just average values at nodes
         result_apical[t] = 0.0;
-        for (int i = 0; i < na; i++) {
-          int index = mesh.apical_tets[i];
-          float val = get_tet_value(mesh, index, buffer);
-          result_apical[t] += mesh.apical_tets_vol[index] * val;
+        for (auto index : mesh.apical_nodes) {
+          result_apical[t] += buffer[index];
         }
-        result_apical[t] /= mesh.apical_vol;
+        result_apical[t] /= static_cast<float>(mesh.apical_nodes.size());
 
-        // get values at basal tets
         result_basal[t] = 0.0;
-        for (int i = 0; i < nb; i++) {
-          int index = mesh.basal_tets[i];
-          float val = get_tet_value(mesh, index, buffer);
-          result_basal[t] += mesh.basal_tets_vol[index] * val;
+        for (auto index : mesh.basal_nodes) {
+          result_basal[t] += buffer[index];
         }
-        result_basal[t] /= mesh.basal_vol;
+        result_basal[t] /= static_cast<float>(mesh.basal_nodes.size());
       }
       else {
         fatal_error("Error reading row");
