@@ -123,6 +123,7 @@ for i, dtype in enumerate(dtypes):
 if plot_ffr:
   for i in range(1, ncells):
     plots[-1, i].axis('off')
+    plots[-2, i].xaxis.set_tick_params(which='both', labelbottom=True)
   plots[-1, 0].set_title("Total fluid flow rate")
   plots[-1, 0].plot(x, ffr, color='blue')
   plots[-1, 0].set_xlabel(" time (s)")
