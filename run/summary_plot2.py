@@ -10,6 +10,8 @@ import struct
 import ctypes
 import time
 
+
+plt.rcParams.update({'font.size': 16})
 ncells = 7
 nintra = 8
 #dtypes = ["ca", "ip3", "cer", "volume"]
@@ -89,7 +91,7 @@ fig, plots = plt.subplots(nplots, ncells, sharex='col', squeeze=False)
 plt.subplots_adjust(wspace = 0.5)
 #fig.set_size_inches(ncells * 3.8, nplots * 2.5)
 fig.set_size_inches(ncells * 7.6, nplots * 5.0)
-fig.text(0.02, 0.96, os.getcwd(), fontsize=12)
+fig.text(0.02, 0.96, os.getcwd(), fontsize=20)
 
 x = get_time_vals("a1") # get the x-axis time values
 volumes, ffr = get_data_fluid_flow(x.shape[0])
