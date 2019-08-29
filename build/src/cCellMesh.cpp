@@ -66,6 +66,14 @@ void cCellMesh::get_mesh(std::string file_name){
   tetrahedrons.resize(tetrahedrons_count, Eigen::NoChange);
   dfa.resize(tetrahedrons_count, Eigen::NoChange);
   dfb.resize(tetrahedrons_count, Eigen::NoChange);
+  std::ifstream dfafile("matlab_dfa_cell" + std::to_string(parent->cell_number) + ".dat");
+  if (!dfafile) {
+    utils::fatal_error("dfa file could not be opened", parent->out);
+  }
+  std::ifstream dfbfile("matlab_dfb_cell" + std::to_string(parent->cell_number) + ".dat");
+  if (!dfbfile) {
+    utils::fatal_error("dfb file could not be opened", parent->out);
+  }
   for(int n=0; n<tetrahedrons_count; n++){
     for(int m=0; m<4; m++){
       cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
@@ -73,8 +81,10 @@ void cCellMesh::get_mesh(std::string file_name){
     }
     cell_file.read(reinterpret_cast<char *>(&f32), sizeof(f32));
     dfa(n) = f32;
+    dfafile >> dfa(n);
     cell_file.read(reinterpret_cast<char *>(&f32), sizeof(f32));
     dfb(n) = f32;
+    dfbfile >> dfb(n);
   }
   // get the apical triangles (int32 count, int32 triangle indices)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));

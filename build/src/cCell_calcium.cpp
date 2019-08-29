@@ -201,6 +201,8 @@ void cCell_calcium::make_matrices(){
   // --------------------------------
   // for each volume element...
   // --------------------------------
+  std::ofstream debugryr(std::string("cpp_weights_ryr_cell") + std::to_string(cell_number) + std::string(".dat"));
+  std::ofstream debugplc(std::string("cpp_weights_plc_cell") + std::to_string(cell_number) + std::string(".dat"));
   for(int n = 0; n < (mesh->tetrahedrons_count); n++){ 
     Eigen::Matrix<int,1,4> vi;      // tetrahedron vertex indices
     vi = mesh->tetrahedrons.block<1,4>(n, 0);
@@ -219,8 +221,12 @@ void cCell_calcium::make_matrices(){
 
     // RyR and PLC spatial factors per element
     element_data(n, RYR_e) = 
+//      ((mesh->dfa[n] < p[d_RyR]) ? (1.0 - ((p[d_RyR] - mesh->dfa[n]) / p[d_RyR])) : 1.0);
       ((mesh->dfa[n] < p[d_RyR]) ? mesh->dfa[n] : 1.0);
+//    element_data(n, PLC_e) = (mesh->dfb[n] < p[PLCds]) ? 1.0 : 0.0;
     element_data(n, PLC_e) = (mesh->dfb[n] < p[PLCds] && mesh->dfa[n] > p[PLCdl]) ? 1.0 : 0.0;
+    debugryr << element_data(n, RYR_e) << std::endl;
+    debugplc << element_data(n, PLC_e) << std::endl;
 
     tCalcs Ic = V * p[Dc]; // diffusion coefficients
     tCalcs Ip = V * p[Dp];
@@ -649,6 +655,9 @@ void cCell_calcium::lumen_exchange() {
   // first element is new volume, second is its derivative
   cell_volume_term = cell_volume_terms[1] / cell_volume_terms[0];
   volume_scaling = volume_at_rest / cell_volume_terms[0];
+  // DEBUGGING: uncomment following two lines to disable fluid flow coupling
+  cell_volume_term = 0.0;
+  volume_scaling = 1.0;
 }
 
 void cCell_calcium::run() {

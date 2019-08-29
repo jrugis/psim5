@@ -170,6 +170,17 @@ for p1 in p1_array:
         print("no such mesh file: " + mesh)
         quit()
       os.system("cp " + run_dir + "/meshes/" + mesh + " a1c" + str(cell) + ".bmsh")
+      dfafn = "matlab_dfa_cell%d.dat" % cell
+      if not os.path.exists(run_dir + "/" + dfafn):
+        print("no such distance file: " + dfafn)
+        quit()
+      os.system("cp " + run_dir + "/" + dfafn + " .")
+      dfbfn = "matlab_dfb_cell%d.dat" % cell
+      if not os.path.exists(run_dir + "/" + dfbfn):
+        print("no such distance file: " + dfafn)
+        quit()
+      os.system("cp " + run_dir + "/" + dfbfn + " .")
+
     os.chdir("..")
 f1.close()
 
