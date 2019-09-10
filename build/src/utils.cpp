@@ -35,6 +35,7 @@ void utils::get_parameters(const std::string file_id, int ptype, int cell_num, t
   // calcium simulation parameters
   std::string cpnames[PCOUNT] = { \
     "delT", "totalT", "Tstride", \
+    "noCoupling", \
     "PLCsrt", "PLCfin", \
     "c0", "ip0", "ce0", "Gamma", \
     "Dc", "Dp", "De", "Fc", "Fip", \

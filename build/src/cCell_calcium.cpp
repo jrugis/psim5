@@ -71,6 +71,11 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank, int
 
   // communicating with lumen (send info about connectivity, receive params)
   lumen_prep();
+
+  if (p[noCoupling] != 0) {
+    out << "<Cell_x> WARNING: Fluid flow coupling is disabled, the calcium model will run independently of fluid flow,";
+    out << " ignore fluid flow results!" << std::endl;
+  }
 }
 
 cCell_calcium::~cCell_calcium() {
@@ -201,8 +206,8 @@ void cCell_calcium::make_matrices(){
   // --------------------------------
   // for each volume element...
   // --------------------------------
-  std::ofstream debugryr(std::string("cpp_weights_ryr_cell") + std::to_string(cell_number) + std::string(".dat"));
-  std::ofstream debugplc(std::string("cpp_weights_plc_cell") + std::to_string(cell_number) + std::string(".dat"));
+//  std::ofstream debugryr(std::string("cpp_weights_ryr_cell") + std::to_string(cell_number) + std::string(".dat"));
+//  std::ofstream debugplc(std::string("cpp_weights_plc_cell") + std::to_string(cell_number) + std::string(".dat"));
   for(int n = 0; n < (mesh->tetrahedrons_count); n++){ 
     Eigen::Matrix<int,1,4> vi;      // tetrahedron vertex indices
     vi = mesh->tetrahedrons.block<1,4>(n, 0);
@@ -225,8 +230,8 @@ void cCell_calcium::make_matrices(){
       ((mesh->dfa[n] < p[d_RyR]) ? mesh->dfa[n] : 1.0);
 //    element_data(n, PLC_e) = (mesh->dfb[n] < p[PLCds]) ? 1.0 : 0.0;
     element_data(n, PLC_e) = (mesh->dfb[n] < p[PLCds] && mesh->dfa[n] > p[PLCdl]) ? 1.0 : 0.0;
-    debugryr << element_data(n, RYR_e) << std::endl;
-    debugplc << element_data(n, PLC_e) << std::endl;
+//    debugryr << element_data(n, RYR_e) << std::endl;
+//    debugplc << element_data(n, PLC_e) << std::endl;
 
     tCalcs Ic = V * p[Dc]; // diffusion coefficients
     tCalcs Ip = V * p[Dp];
@@ -655,9 +660,17 @@ void cCell_calcium::lumen_exchange() {
   // first element is new volume, second is its derivative
   cell_volume_term = cell_volume_terms[1] / cell_volume_terms[0];
   volume_scaling = volume_at_rest / cell_volume_terms[0];
-  // DEBUGGING: uncomment following two lines to disable fluid flow coupling
-  cell_volume_term = 0.0;
-  volume_scaling = 1.0;
+  if (p[noCoupling] != 0) {
+    // Setting these values will disable the coupling back to Ca model (the fluid flow model
+    // will receive calcium inputs but the volume result of fluid flow will not be fed back
+    // to the calcium model. This is useful for debugging Ca model.
+    cell_volume_term = 0.0;
+    volume_scaling = 1.0;
+  }
+  else {
+    cell_volume_term = cell_volume_terms[1] / cell_volume_terms[0];
+    volume_scaling = volume_at_rest / cell_volume_terms[0];
+  }
 }
 
 void cCell_calcium::run() {

@@ -87,6 +87,7 @@ enum parameter_types{ \
 // the 3D calcium model parameters
 enum model_parameters{ \
   delT, totalT, Tstride, \
+  noCoupling, \
   PLCsrt, PLCfin, \
   c0, ip0, ce0, Gamma, \
   Dc, Dp, De, Fc, Fip, \
