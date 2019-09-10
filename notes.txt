@@ -28,7 +28,7 @@ make
 Run
 ---
 cd psim5/run
-
+make clean
 make
 
 cp run_default.sl my_run_xxxx.sl
@@ -46,10 +46,11 @@ edit my_calcium_parms_xxxx.dat
 edit my_sweep_parms_xxxx.dat
 
 python run_sim.py my_run_xxxx.sl my_flow_parms_xxxx.dat my_flow_init_xxxx.dat my_flow_adj_xxxx.dat my_calcium_parms_xxxx.dat my_sweep_parms_xxxx.dat
-squeue -u UPI
+squeue -u $USER
 
 
 Results
 -------
 cd /nesi/nobackup/nesi00119/your_name/psim5/run/results/XXXX/XXXX
 summary_plot.pdf
+summary_plot2.pdf
