@@ -686,11 +686,17 @@ void cCell_calcium::run() {
   rhs.resize(DIFVARS * np, Eigen::NoChange);
   bool plc;
 
+  // DEBUGGING: save initial values to output file
+  save_results(ca_file, 0);   // 0 = calcium
+  save_results(ip3_file, 1);  // 1 = ip3
+  save_results(cer_file, 2);  // 2 = cer
+  // END DEBUGGING
+
   int step = 0;
   while(true) {
     step++;
     prev_solvec = solvec;       // c, ip, ce
-	prev_nd_solvec = nd_solvec; // g, h
+    prev_nd_solvec = nd_solvec; // g, h
 
     // get current time and time step value from acinus
     MPI_CHECK(MPI_Recv(&msg, ACCOUNT, MPI_FLOAT, acinus_rank, ACINUS_CELL_TAG, MPI_COMM_WORLD, &stat));

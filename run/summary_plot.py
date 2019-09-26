@@ -89,7 +89,7 @@ def get_time_vals(fname):
   f = open(fname + ".out", "r")
   for line in f:
     if "<Acinus> t:" in line: # iterate through the saved time step values
-      if(float(line.rstrip().split()[2]) == 0.0): continue  # skip start time 0.0
+#      if(float(line.rstrip().split()[2]) == 0.0): continue  # skip start time 0.0
       n += 1
       if (n % tstride) == 0:
         tvals.append(float(line.rstrip().split()[2])) # add to list of time values
