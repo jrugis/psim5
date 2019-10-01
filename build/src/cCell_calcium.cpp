@@ -448,20 +448,22 @@ void cCell_calcium::compute_exchange_load(int cell) {
   // loop over common triangles and compute ip3 fluxes across them
   for (int i = 0; i < num_common_triangles; i++) {
     // we are assuming the ordering of common triangles between two cells is the same in both cells
-    int this_triangle = mesh->common_triangles(cells[cell].sindex + i, tTri);
-    if (this_triangle != recvbuf[i].triangle) {
-        std::cerr << "ORDERINGERROR!!!\n";
+    int this_tri = mesh->common_triangles(cells[cell].sindex + i, tTri);
+    // check that the ordering is same between the sent value and the assumed local value
+    if (this_tri != recvbuf[i].triangle) {
+        std::cerr << "ORDERINGERROR!!!" << std::endl;
+        this_tri = recvbuf[i].triangle;  // if different, assume the one sent is correct
     }
 
     // flux across this triangle
     tCalcs exchange_value = recvbuf[i].value - sendbuf[i].value;
     exchange_value *= p[Fip];
-    exchange_value *= mesh->surface_triangle_areas(this_triangle);
+    exchange_value *= surface_data(this_tri, AREA_s);
 
     // converting from triangle back to vertices
     exchange_value *= third;
     for (int j = 0; j < 3; j++) {
-      int vertex_index = mesh->surface_triangles(this_triangle, j);
+      int vertex_index = mesh->surface_triangles(this_tri, j);
       exchange_load_ip(vertex_index) += exchange_value;
     }
   }

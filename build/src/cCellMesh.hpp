@@ -26,7 +26,6 @@ public:
   int common_triangles_count;
   Eigen::Array<tCoord, Eigen::Dynamic, 3, Eigen::RowMajorBit> vertices; // 3x coordinate
   Eigen::Array<int, Eigen::Dynamic, 3, Eigen::RowMajorBit> surface_triangles; // 3x vertex
-  Eigen::Array<tCoord, Eigen::Dynamic, 1> surface_triangle_areas; // areas of the surface triangles
   Eigen::Array<int, Eigen::Dynamic, 4, Eigen::RowMajorBit> tetrahedrons; // 4x vertex
   Eigen::Array<int, Eigen::Dynamic, CCONNCOUNT, Eigen::RowMajorBit> common_triangles; // this triangle, other cell, other triangle
   Eigen::Array<int, Eigen::Dynamic, 1> apical_triangles; // surface triangle indicies
@@ -38,7 +37,6 @@ private:
   std::string id;
   cCell_calcium* parent;
   void get_mesh(std::string file_name);
-  void compute_surface_triangle_areas();
 };
 
 #endif /* CCELLMESH_H_ */
