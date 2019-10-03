@@ -32,6 +32,7 @@ public:
   Eigen::Array<int, Eigen::Dynamic, 1> basal_triangles; // surface triangle indicies
   Eigen::Array<tDist, Eigen::Dynamic, 1> dfa; // distance from apical (per element)
   Eigen::Array<tDist, Eigen::Dynamic, 1> dfb; // distance from basal (per element)
+  //
 
 private:
   std::string id;
