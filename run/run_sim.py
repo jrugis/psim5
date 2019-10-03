@@ -170,16 +170,30 @@ for p1 in p1_array:
         print("no such mesh file: " + mesh)
         quit()
       os.system("cp " + run_dir + "/meshes/" + mesh + " a1c" + str(cell) + ".bmsh")
+      # copy matlab dfa
       dfafn = "matlab_dfa_cell%d.dat" % cell
       if not os.path.exists(run_dir + "/" + dfafn):
         print("no such distance file: " + dfafn)
         quit()
       os.system("cp " + run_dir + "/" + dfafn + " .")
+      # copy matlab dfb
       dfbfn = "matlab_dfb_cell%d.dat" % cell
       if not os.path.exists(run_dir + "/" + dfbfn):
         print("no such distance file: " + dfafn)
         quit()
       os.system("cp " + run_dir + "/" + dfbfn + " .")
+      # copy matlab apical triangles
+      apicalfn = "matlab_apical_cell_%d_zeroidx.dat" % cell
+      if not os.path.exists(run_dir + "/" + apicalfn):
+        print("no such distance file: " + apicalfn)
+        quit()
+      os.system("cp " + run_dir + "/" + apicalfn + " .")
+      # copy matlab basal triangles
+      basalfn = "matlab_basal_cell_%d_zeroidx.dat" % cell
+      if not os.path.exists(run_dir + "/" + basalfn):
+        print("no such distance file: " + basalfn)
+        quit()
+      os.system("cp " + run_dir + "/" + basalfn + " .")
 
     os.chdir("..")
 f1.close()

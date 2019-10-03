@@ -89,22 +89,51 @@ void cCellMesh::get_mesh(std::string file_name){
   // get the apical triangles (int32 count, int32 triangle indices)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
   apical_triangles_count = i32;
+  parent->out << "<DEBUG> mesh num apical = " << apical_triangles_count << std::endl;
   apical_triangles.resize(apical_triangles_count, Eigen::NoChange);
   for(int n=0; n<apical_triangles_count; n++){
     cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
     apical_triangles(n) = i32-1; // change to zero indexed
   }
+  // DEBUGGING - load matlab apical triangles
+  std::ifstream matapic("matlab_apical_cell_" + std::to_string(parent->cell_number) + "_zeroidx.dat");
+  if (!matapic) {
+    utils::fatal_error("apical triangles file could not be opened", parent->out);
+  }
+  matapic >> apical_triangles_count;
+  parent->out << "<DEBUG> matlab num apical = " << apical_triangles_count << std::endl;
+  apical_triangles.resize(apical_triangles_count, Eigen::NoChange);
+  for(int n=0; n<apical_triangles_count; n++){
+    matapic >> apical_triangles(n);
+  }
+  matapic.close();
+  // END DEBUGGING
   // get the basal triangles (int32 count, int32 triangle indices)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
   basal_triangles_count = i32;
+  parent->out << "<DEBUG> mesh num basal = " << basal_triangles_count << std::endl;
   basal_triangles.resize(basal_triangles_count, Eigen::NoChange);
   for(int n=0; n<basal_triangles_count; n++){
     cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
     basal_triangles(n) = i32-1; // change to zero indexed
   }
+  // DEBUGGING - load matlab basal triangles
+  std::ifstream matbasal("matlab_basal_cell_" + std::to_string(parent->cell_number) + "_zeroidx.dat");
+  if (!matbasal) {
+    utils::fatal_error("basal triangles file could not be opened", parent->out);
+  }
+  matbasal >> basal_triangles_count;
+  parent->out << "<DEBUG> matlab num basal = " << basal_triangles_count << std::endl;
+  basal_triangles.resize(basal_triangles_count, Eigen::NoChange);
+  for(int n=0; n<basal_triangles_count; n++){
+    matbasal >> basal_triangles(n);
+  }
+  matbasal.close();
+  // END DEBUGGING
   // get the cell-to-cell data (int32 count, 3x-int32 this_triamgle, other_cell, other_triangle)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
   common_triangles_count = i32;
+  parent->out << "<DEBUG> num common = " << common_apical_triangles << std::endl;
   common_triangles.resize(common_triangles_count, Eigen::NoChange);
   for(int n=0; n<common_triangles_count; n++){
     for(int m=0; m<3; m++){
