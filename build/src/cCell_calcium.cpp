@@ -69,9 +69,9 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank) {
 
   // set up MPI datatype
   const int nitems = 2;
-  int blocklengths[2] = {1, 1};
-  MPI_Datatype types[2] = {MPI_INT, MPI_DOUBLE};  // TODO: should be related to tCalcs
-  MPI_Aint offsets[2];
+  int blocklengths[nitems] = {1, 1};
+  MPI_Datatype types[nitems] = {MPI_INT, MPI_DOUBLE};  // TODO: should be related to tCalcs
+  MPI_Aint offsets[nitems];
   offsets[0] = offsetof(exchange_t, triangle);
   offsets[1] = offsetof(exchange_t, value);
   MPI_Type_create_struct(nitems, blocklengths, offsets, types, &mpi_exchange_type);
@@ -420,6 +420,7 @@ MatrixX1C cCell_calcium::solve_nd(tCalcs dt){ // the non-diffusing variables
 
 void cCell_calcium::compute_exchange_values(int cell) {
   int np = mesh->vertices_count;
+  // pointer to the buffer for storing value to send to this cell
   exchange_t* buffer = exchange_send_buffer[cell];
 
   // loop over the common triangles of this cell
@@ -441,41 +442,49 @@ void cCell_calcium::compute_exchange_values(int cell) {
 }
 
 void cCell_calcium::compute_exchange_load(int cell) {
+  int np = mesh->vertices_count;
   int num_common_triangles = cells[cell].fcount;
-  exchange_t* sendbuf = exchange_send_buffer[cell];
   exchange_t* recvbuf = exchange_recv_buffer[cell];
 
   // loop over common triangles and compute ip3 fluxes across them
   for (int i = 0; i < num_common_triangles; i++) {
     // we are assuming the ordering of common triangles between two cells is the same in both cells
-    int this_tri = mesh->common_triangles(cells[cell].sindex + i, tTri);
-    // check that the ordering is same between the sent value and the assumed local value
-    if (this_tri != recvbuf[i].triangle) {
-        std::cerr << "ORDERINGERROR!!!" << std::endl;
-        this_tri = recvbuf[i].triangle;  // if different, assume the one sent is correct
-    }
+    int this_tri = recvbuf[i].triangle;
 
-    // flux across this triangle
-    tCalcs exchange_value = recvbuf[i].value - sendbuf[i].value;
-    exchange_value *= p[Fip];
-    exchange_value *= surface_data(this_tri, AREA_s);
-
-    // converting from triangle back to vertices
-    exchange_value *= third;
+    // we need the average IP3 of this triangle's vertices
+    // NOTE: this was computed in compute_exchange_values and stored in
+    // exchange_send_buffer[cell] but that array is indexed by common 
+    // triangles and this_tri is the index in surface triangles. The choice is
+    // either to recompute the average here or create another array, of length
+    // surface_triangles_count, and store the value in there during compute_exchange_values
+    // and look it up here...
+    tCalcs this_tri_ip = 0.0;
     for (int j = 0; j < 3; j++) {
       int vertex_index = mesh->surface_triangles(this_tri, j);
-      exchange_load_ip(vertex_index) += exchange_value;
+      this_tri_ip += solvec(np + vertex_index);
+    }
+    this_tri_ip *= third;
+
+    // flux across this triangle - recvbuf holds the average IP3 at this triangle
+    // in the other cell
+    tCalcs this_tri_flux = recvbuf[i].value - this_tri_ip;
+    this_tri_flux *= p[Fip];
+    this_tri_flux *= surface_data(this_tri, AREA_s);
+
+    // converting from triangle back to vertices
+    this_tri_flux *= third;
+    for (int j = 0; j < 3; j++) {
+      int vertex_index = mesh->surface_triangles(this_tri, j);
+      exchange_load_ip(vertex_index) += this_tri_flux;
     }
   }
 }
 
 void cCell_calcium::exchange() {
-  // this assumes the ordering of common triangles between two cells is the same from both cells
-
+  // initialise to zero
   exchange_load_ip.setZero();
 
   int num_connected_cells = cells.size();
-
   MPI_Request send_requests[num_connected_cells];
   MPI_Request recv_requests[num_connected_cells];
 
@@ -488,7 +497,7 @@ void cCell_calcium::exchange() {
     // fill msg with values for each common triangle with this cell
     compute_exchange_values(i);
 
-    // communicate
+    // communicate (non-blocking so can process incoming messages immediately)
     MPI_CHECK(MPI_Isend(msg, mlength, mpi_exchange_type, dest, CELL_CELL_TAG, MPI_COMM_WORLD, &send_requests[i]));
   }
 
