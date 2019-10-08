@@ -160,8 +160,8 @@ void cCell_calcium::make_matrices(){
 
     // RyR and PLC spatial factors per element
     element_data(n, RYR_e) = 
-      ((mesh->dfa[n] < p[d_RyR]) ? (1.0 - ((p[d_RyR] - mesh->dfa[n]) / p[d_RyR])) : 1.0);
-    element_data(n, PLC_e) = (mesh->dfb[n] < p[d_PLC]) ? 1.0 : 0.0;
+      ((mesh->e_dfa[n] < p[d_RyR]) ? (1.0 - ((p[d_RyR] - mesh->e_dfa[n]) / p[d_RyR])) : 1.0);
+    element_data(n, PLC_e) = (mesh->e_dfb[n] < p[d_PLC]) ? 1.0 : 0.0;
 
     tCalcs Ic = V * p[Dc]; // diffusion coefficients
     tCalcs Ip = V * p[Dp];

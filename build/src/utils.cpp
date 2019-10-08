@@ -10,6 +10,9 @@
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string.hpp>
 
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+
 #include "global_defs.hpp"
 #include "utils.hpp"
 
@@ -86,3 +89,14 @@ void utils::get_parameters(const std::string file_id, int ptype, int cell_num, t
     if(p[n] < 0.0) fatal_error("missing parameter: " + pnames[n], out);
 }
 
+tDist utils::get_distance(Eigen::Vector3d p, Eigen::Vector3d v, Eigen::Vector3d w) {
+  // Return minimum distance between line segment vw and point p
+  const tDist l2 = (w-v).squaredNorm();  // |w-v|^2   avoid a sqrt
+  if (l2 == 0.0) return((v-p).norm()); // v == w case, return distance(p, v)
+  // Consider the line extending the segment, parameterized as v + t (w - v).
+  // Find projection of point p onto the line. It falls where t = [(p-v) . (w-v)] / |w-v|^2
+  // Clamp t from [0,1] to handle points outside the segment vw.
+  const tDist t = std::max(0.0, std::min(1.0, (p-v).dot(w-v))); // max(0, min(1, dot(p - v, w - v) / l2));
+  const Eigen::Vector3d projection = v + (t * (w - v)); // Projection falls on the segment
+  return((projection - p).norm()); //return distance(p, projection)
+}

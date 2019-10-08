@@ -13,6 +13,7 @@
 #include <cmath>
 
 #include "utils.hpp"
+#include "cLumenBase.hpp"
 #include "cCell_calcium.hpp"
 #include "cCellMesh.hpp"
 
@@ -34,6 +35,8 @@ void cCellMesh::get_mesh(std::string file_name){
   std::ifstream cell_file(file_name.c_str(), std::ios::in | std::ios::binary); // open the mesh file
   uint32_t i32;
   float f32;
+  cLumenBase* lumen;  // needed for secondary mesh geometry calculations
+  lumen = new cLumenBase(parent);
 
   // check the file is open
   if (not cell_file.is_open()) {
@@ -48,6 +51,9 @@ void cCellMesh::get_mesh(std::string file_name){
       cell_file.read(reinterpret_cast<char *>(&f32), sizeof(f32));
       vertices(n,m) = f32;
     }
+    // calculate the distance from node to the lumen
+    n_dfa.resize(vertices_count, Eigen::NoChange);
+	n_dfa(n) = lumen->get_dnl(vertices.block<1,3>(n, 0));
   }
   // get the surface triangles (int32 count, 3x-int32 vertex indices)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
@@ -63,17 +69,17 @@ void cCellMesh::get_mesh(std::string file_name){
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
   tetrahedrons_count = i32;
   tetrahedrons.resize(tetrahedrons_count, Eigen::NoChange);
-  dfa.resize(tetrahedrons_count, Eigen::NoChange);
-  dfb.resize(tetrahedrons_count, Eigen::NoChange);
+  e_dfa.resize(tetrahedrons_count, Eigen::NoChange);
+  e_dfb.resize(tetrahedrons_count, Eigen::NoChange);
   for(int n=0; n<tetrahedrons_count; n++){
     for(int m=0; m<4; m++){
       cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
       tetrahedrons(n,m) = i32-1; // change to zero indexed
     }
     cell_file.read(reinterpret_cast<char *>(&f32), sizeof(f32));
-    dfa(n) = f32;
+    e_dfa(n) = f32;
     cell_file.read(reinterpret_cast<char *>(&f32), sizeof(f32));
-    dfb(n) = f32;
+    e_dfb(n) = f32;
   }
   // get the apical triangles (int32 count, int32 triangle indices)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
@@ -101,7 +107,9 @@ void cCellMesh::get_mesh(std::string file_name){
       common_triangles(n,m) = i32-1; // change to zero indexed
     }
   }
+  
   cell_file.close();
+  delete lumen;
 }
 
 void cCellMesh::print_info(){
