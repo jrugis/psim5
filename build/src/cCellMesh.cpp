@@ -35,7 +35,7 @@ void cCellMesh::get_mesh(std::string file_name){
   std::ifstream cell_file(file_name.c_str(), std::ios::in | std::ios::binary); // open the mesh file
   uint32_t i32;
   float f32;
-  cLumenBase* lumen;  // needed for secondary mesh geometry calculations
+  cLumenBase* lumen;  // needed for apical/basal mesh geometry calculations
   lumen = new cLumenBase(parent);
 
   // check the file is open
@@ -72,12 +72,15 @@ void cCellMesh::get_mesh(std::string file_name){
   e_dfa.resize(tetrahedrons_count, Eigen::NoChange);
   e_dfb.resize(tetrahedrons_count, Eigen::NoChange);
   for(int n=0; n<tetrahedrons_count; n++){
+    tCalcs d = 0.0; // distance from element to apical
     for(int m=0; m<4; m++){
       cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
-      tetrahedrons(n,m) = i32-1; // change to zero indexed
+      tetrahedrons(n,m) = i32-1;      // change to zero indexed
+	  d += n_dfa(tetrahedrons(n,m));  // sum distance from node to apical
     }
     cell_file.read(reinterpret_cast<char *>(&f32), sizeof(f32));
-    e_dfa(n) = f32;
+    //e_dfa(n) = f32;
+	e_dfa(n) = d / 4; // the average over four vertices
     cell_file.read(reinterpret_cast<char *>(&f32), sizeof(f32));
     e_dfb(n) = f32;
   }
@@ -107,9 +110,15 @@ void cCellMesh::get_mesh(std::string file_name){
       common_triangles(n,m) = i32-1; // change to zero indexed
     }
   }
-  
   cell_file.close();
   delete lumen;
+  // **************** DEBUG ************************************
+  //utils::save_matrix("vertices_" + id + ".bin", vertices);
+  //utils::save_integer_matrix("triangles_" + id + ".bin", surface_triangles);
+  utils::save_integer_matrix("tetrahedrons_" + id + ".bin", tetrahedrons);
+  //utils::save_matrix("n_dfa_" + id + ".bin", n_dfa);
+  //utils::save_matrix("e_dfa_" + id + ".bin", e_dfa);
+  // ***********************************************************
 }
 
 void cCellMesh::print_info(){

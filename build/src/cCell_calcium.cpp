@@ -5,12 +5,11 @@
  *      Author: jrugis
  */
 
+#include <cmath>
+#include <iomanip>
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <iomanip>
-#include <fstream>
-#include <cmath>
 #include <sys/stat.h>
 #include <time.h>
 #include <vector>
@@ -152,12 +151,11 @@ void cCell_calcium::make_matrices(){
 
     Eigen::Matrix<tCoord,3,3> J;    // tetrahedron edge vectors
     for(int i = 0; i < 3; i++)
-      J.block<1,3>(i, 0) = vert.block<1,3>(i + 1, 0) - vert.block<1,3>(0, 0);
-    tCalcs V, Vx6;                  // tetrahedron volume, (6x) volume
-    Vx6 = J.determinant();
-    V = Vx6 / 6.0;
+		J.row(i) = vert.row(i + 1) - vert.row(0);
+    tCalcs Vx6 = fabs(J.determinant()); // tetrahedron (6x) volume
+    tCalcs V = Vx6 / 6.0;
     element_data(n, VOL_e) = V;   // save the tetrahedron volume
-
+  
     // RyR and PLC spatial factors per element
     element_data(n, RYR_e) = 
       ((mesh->e_dfa[n] < p[d_RyR]) ? (1.0 - ((p[d_RyR] - mesh->e_dfa[n]) / p[d_RyR])) : 1.0);
@@ -209,6 +207,7 @@ void cCell_calcium::make_matrices(){
     stiffce(vi(3), vi(2)) = stiffce(vi(2), vi(3));
     small_mass(vi(3), vi(2)) = small_mass(vi(2), vi(3));
   }
+  //utils::save_matrix("tet_vol_" + id + ".bin", element_data.col(VOL_e));
 
   // construct sparse mass matrix from a list of triplets (non zero elements)
   std::vector<Triplet> triplet_list;
@@ -576,5 +575,6 @@ void cCell_calcium::save_results(std::ofstream &data_file, int var){
   float* fbuf = new float[np];
   for(int n=0; n<np; n++) fbuf[n] = solvec[var*np + n]; // convert to float for reduced file size
   data_file.write(reinterpret_cast<char*>(fbuf), np * sizeof(float));
+  delete(fbuf);
 }
 
