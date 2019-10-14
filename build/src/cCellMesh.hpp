@@ -33,7 +33,6 @@ public:
   Eigen::Array<tDist, Eigen::Dynamic, 1> n_dfa; // distance from apical (per node)
   Eigen::Array<tDist, Eigen::Dynamic, 1> e_dfa; // distance from apical (per element)
   Eigen::Array<tDist, Eigen::Dynamic, 1> e_dfb; // distance from basal (per element)
-  //
 
 private:
   std::string id;

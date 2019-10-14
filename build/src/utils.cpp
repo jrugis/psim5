@@ -108,35 +108,35 @@ void utils::save_matrix(std::string file_name, MatrixXXC mat) {
   int rows = mat.rows();
   int cols = mat.cols();
   int rc = rows * cols;
-  float* fbuf = new float[rc]; // temporary buffer
+  double* buf = new double[rc]; // temporary buffer
   int n = 0;
   for(int r=0; r<rows; r++){
   	for(int c=0; c<cols; c++){
-	  fbuf[n++] = mat(r, c); // convert to float for reduced file size
+	  buf[n++] = mat(r, c); // flatten the data
 	}
   } 
   std::ofstream data_file;
   data_file.open(file_name, std::ios::binary);
-  data_file.write(reinterpret_cast<char*>(fbuf), rc * sizeof(float));
+  data_file.write(reinterpret_cast<char*>(buf), rc * sizeof(double));
   data_file.close();
-  delete(fbuf);
+  delete(buf);
 }
 
 void utils::save_integer_matrix(std::string file_name, MatrixXXI mat) {
   int rows = mat.rows();
   int cols = mat.cols();
   int rc = rows * cols;
-  int* ibuf = new int[rc]; // temporary buffer
+  int* buf = new int[rc]; // temporary buffer
   int n = 0;
   for(int r=0; r<rows; r++){
   	for(int c=0; c<cols; c++){
-	  ibuf[n++] = mat(r, c);
+	  buf[n++] = mat(r, c); // flatten the data
 	}
   } 
   std::ofstream data_file;
   data_file.open(file_name, std::ios::binary);
-  data_file.write(reinterpret_cast<char*>(ibuf), rc * sizeof(int));
+  data_file.write(reinterpret_cast<char*>(buf), rc * sizeof(int));
   data_file.close();
-  delete(ibuf);
+  delete(buf);
 }
 

@@ -53,7 +53,8 @@ void cCellMesh::get_mesh(std::string file_name){
     }
     // calculate the distance from node to the lumen
     n_dfa.resize(vertices_count, Eigen::NoChange);
-	n_dfa(n) = lumen->get_dnl(vertices.block<1,3>(n, 0));
+	//n_dfa(n) = lumen->get_dnl(vertices.block<1,3>(n, 0));
+	n_dfa(n) = lumen->get_dnl(vertices.row(n));
   }
   // get the surface triangles (int32 count, 3x-int32 vertex indices)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
@@ -87,11 +88,25 @@ void cCellMesh::get_mesh(std::string file_name){
   // get the apical triangles (int32 count, int32 triangle indices)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
   apical_triangles_count = i32;
-  apical_triangles.resize(apical_triangles_count, Eigen::NoChange);
+  //apical_triangles.resize(apical_triangles_count, Eigen::NoChange);
   for(int n=0; n<apical_triangles_count; n++){
-    cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
-    apical_triangles(n) = i32-1; // change to zero indexed
+	cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
+    //apical_triangles(n) = i32-1; // change to zero indexed
   }
+  
+  apical_triangles.resize(surface_triangles_count, Eigen::NoChange); // overkill size for now
+  apical_triangles_count = 0;
+  for(int n=0; n<surface_triangles_count; n++){
+	double d = (    // triangle distance from apical
+		n_dfa(surface_triangles(n,0)) + 
+		n_dfa(surface_triangles(n,1)) +
+		n_dfa(surface_triangles(n,2))) / 3.0;
+    if (d < 0.8) {
+	  apical_triangles(apical_triangles_count++) = n;
+    }
+  }
+  apical_triangles.conservativeResize(apical_triangles_count, 1); // actual triangles count
+    
   // get the basal triangles (int32 count, int32 triangle indices)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
   basal_triangles_count = i32;
@@ -115,7 +130,8 @@ void cCellMesh::get_mesh(std::string file_name){
   // **************** DEBUG ************************************
   //utils::save_matrix("vertices_" + id + ".bin", vertices);
   //utils::save_integer_matrix("triangles_" + id + ".bin", surface_triangles);
-  utils::save_integer_matrix("tetrahedrons_" + id + ".bin", tetrahedrons);
+  //utils::save_integer_matrix("apical_" + id + ".bin", apical_triangles);
+  //utils::save_integer_matrix("tetrahedrons_" + id + ".bin", tetrahedrons);
   //utils::save_matrix("n_dfa_" + id + ".bin", n_dfa);
   //utils::save_matrix("e_dfa_" + id + ".bin", e_dfa);
   // ***********************************************************
