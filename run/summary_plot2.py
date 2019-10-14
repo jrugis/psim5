@@ -23,6 +23,8 @@ parser.add_argument("--ncells", type=int, default=7, help="Number of cells (defa
 parser.add_argument("--nintra", type=int, default=8, help="Number of intracellular variables (default is 8)")
 parser.add_argument("--font-size", type=int, default=16, help="Font size for matplotlib (default is 16)")
 parser.add_argument("-o", "--output", default="summary_plot2.pdf", help="File name to save plot to (default is summary_plot2.pdf)")
+parser.add_argument('--apical-cutoff', type=float, default=0.8, help="Apical cutoff (default=0.8)")
+parser.add_argument('--basal-cutoff', type=float, default=0.8, help="Basal cutoff (default=0.8)")
 args = parser.parse_args()
 
 plt.rcParams.update({'font.size': args.font_size})
@@ -36,22 +38,27 @@ if not args.no_ip3:
 if not args.no_volume:
     dtypes.append("volume")
 plot_ffr = False if args.no_ffr else True
+apical_cutoff = args.apical_cutoff
+basal_cutoff = args.basal_cutoff
 
 ##################################################################
 # ctypes lib for loading data
 ##################################################################
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
-if not os.path.exists(os.path.join(script_dir, "_summary_plot.so")):
-    print("you must run 'make' in {}".format(script_dir))
+if not os.path.exists(os.path.join(script_dir, "_summary_plot2.so")):
+    print("you must run 'make' in the build directory")
     sys.exit(1)
-_lib = ctypes.CDLL(os.path.join(script_dir, "_summary_plot.so"))
+_lib = ctypes.CDLL(os.path.join(script_dir, "_summary_plot2.so"))
 _lib.load_summary_plot_data.restype = None
 _lib.load_summary_plot_data.argtypes = [
   ctypes.c_char_p,
   ctypes.c_int,
+  ctypes.c_int,
+  ctypes.c_double,
   np.ctypeslib.ndpointer(dtype=np.float32),
   np.ctypeslib.ndpointer(dtype=np.float32),
+  ctypes.c_double,
   np.ctypeslib.ndpointer(dtype=np.float32),
   np.ctypeslib.ndpointer(dtype=np.float32),
 ]
@@ -137,7 +144,7 @@ for cell in range(ncells):
       ca_basal = np.empty(x.shape[0], np.float32)
       ip_apical = np.empty(x.shape[0], np.float32)
       ip_basal = np.empty(x.shape[0], np.float32)
-      _lib.load_summary_plot_data(dname.encode("utf-8"), x.shape[0], ca_apical, ca_basal, ip_apical, ip_basal)
+      _lib.load_summary_plot_data(dname.encode("utf-8"), cell + 1, x.shape[0], apical_cutoff, ca_apical, ca_basal, basal_cutoff, ip_apical, ip_basal)
 
   # plot ca
   if "ca" in dtypes:

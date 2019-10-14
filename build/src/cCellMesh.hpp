@@ -9,17 +9,16 @@
 #define CCELLMESH_H_
 
 #include <string>
+#include <fstream>
 #include <Eigen/Dense>
 
 #include "global_defs.hpp"
 
-class cCell_calcium;
-
 class cCellMesh {
 public:
-  cCellMesh(std::string mesh_name, cCell_calcium* parent);
+  cCellMesh(std::string mesh_name, std::ofstream& out, int cell_number);
   ~cCellMesh();
-  void print_info();
+  void print_info(std::ofstream& out);
 
   int vertices_count, tetrahedrons_count;
   int surface_triangles_count, apical_triangles_count, basal_triangles_count;
@@ -36,9 +35,8 @@ public:
 
 private:
   std::string id;
-  cCell_calcium* parent;
-  void get_mesh(std::string file_name);
-  void identify_common_apical_triangles();
+  void get_mesh(std::string file_name, std::ofstream& out, int cell_number);
+  void identify_common_apical_triangles(std::ofstream& out, int cell_number);
 };
 
 #endif /* CCELLMESH_H_ */

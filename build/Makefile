@@ -36,7 +36,12 @@ EXE = ../run/psim5
 OBJS = main.o utils.o cAcinus.o cCell_calcium.o cCellMesh.o cLumen.o LSODA.o cLSODA.o cCVode.o
 SRC = ./src
 
-all: $(EXE)
+PLOT_SO = ../run/_summary_plot2.so
+PLOT_LIBS = 
+PLOT_FLAGS = -fPIC
+PLOT_OBJS = summary_plot.o cCellMesh_plot.o utils_plot.o
+
+all: $(EXE) $(PLOT_SO)
 
 LSODA.o: $(SRC)/libsoda/LSODA.cpp $(SRC)/libsoda/LSODA.h $(SRC)/libsoda/helper.h
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
@@ -67,6 +72,18 @@ cCellMesh.o: $(SRC)/cCellMesh.cpp $(SRC)/cCellMesh.hpp $(SRC)/cCell_calcium.hpp 
 
 $(EXE): $(OBJS)
 	$(CPP) $(CPP_FLAGS) $(CPP_LIBS) -o $@ $+
+
+utils_plot.o: $(SRC)/utils.cpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp
+	$(CPP) $(CPP_FLAGS) $(PLOT_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
+
+cCellMesh_plot.o: $(SRC)/cCellMesh.cpp $(SRC)/cCellMesh.hpp $(SRC)/cCell_calcium.hpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp
+	$(CPP) $(CPP_FLAGS) $(PLOT_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
+
+summary_plot.o: $(SRC)/summary_plot.cpp $(SRC)/cCellMesh.hpp $(SRC)/global_defs.hpp $(SRC)/utils.hpp
+	$(CPP) $(CPP_FLAGS) $(PLOT_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
+
+$(PLOT_SO): $(PLOT_OBJS)
+	$(CPP) $(CPP_FLAGS) -shared $(PLOT_LIBS) -o $@ $+
 
 clean:
 	rm -f *.o

@@ -30,8 +30,8 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank, int
   out << "<Cell_x> id: " << id << std::endl;
   out << "<Cell_x> host_name: " << host_name << std::endl;
 
-  mesh = new cCellMesh(id, this);
-  mesh->print_info();
+  mesh = new cCellMesh(id, out, cell_number);
+  mesh->print_info(out);
 
   // common cells for exchanging ip3 preparation
   out << "<Cell_x> common faces with cells:";

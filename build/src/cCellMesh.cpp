@@ -13,24 +13,22 @@
 #include <cmath>
 
 #include "utils.hpp"
-#include "cCell_calcium.hpp"
 #include "cCellMesh.hpp"
 
-cCellMesh::cCellMesh(std::string mesh_name, cCell_calcium* p){
+cCellMesh::cCellMesh(std::string mesh_name, std::ofstream& out, int cell_number){
   // initialise member variables
   vertices_count = tetrahedrons_count = 0;
   surface_triangles_count = apical_triangles_count = basal_triangles_count = 0;
   common_triangles_count = 0;
-  parent = p;
   id = mesh_name;  
-  get_mesh(id + ".bmsh");
-  identify_common_apical_triangles();
+  get_mesh(id + ".bmsh", out, cell_number);
+  identify_common_apical_triangles(out, cell_number);
 }
 
 cCellMesh::~cCellMesh(){
 }
 
-void cCellMesh::get_mesh(std::string file_name){
+void cCellMesh::get_mesh(std::string file_name, std::ofstream& out, int cell_number){
   // local variables
   std::ifstream cell_file(file_name.c_str(), std::ios::in | std::ios::binary); // open the mesh file
   uint32_t i32;
@@ -38,7 +36,7 @@ void cCellMesh::get_mesh(std::string file_name){
 
   // check the file is open
   if (not cell_file.is_open()) {
-    utils::fatal_error("mesh file " + file_name + " could not be opened", parent->out);
+    utils::fatal_error("mesh file " + file_name + " could not be opened", out);
   }
   // get the mesh vertices (int32 count, 3x-float32 vertices) 
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
@@ -66,13 +64,13 @@ void cCellMesh::get_mesh(std::string file_name){
   tetrahedrons.resize(tetrahedrons_count, Eigen::NoChange);
   dfa.resize(tetrahedrons_count, Eigen::NoChange);
   dfb.resize(tetrahedrons_count, Eigen::NoChange);
-  std::ifstream dfafile("matlab_dfa_cell" + std::to_string(parent->cell_number) + ".dat");
+  std::ifstream dfafile("matlab_dfa_cell" + std::to_string(cell_number) + ".dat");
   if (!dfafile) {
-    utils::fatal_error("dfa file could not be opened", parent->out);
+    utils::fatal_error("dfa file could not be opened", out);
   }
-  std::ifstream dfbfile("matlab_dfb_cell" + std::to_string(parent->cell_number) + ".dat");
+  std::ifstream dfbfile("matlab_dfb_cell" + std::to_string(cell_number) + ".dat");
   if (!dfbfile) {
-    utils::fatal_error("dfb file could not be opened", parent->out);
+    utils::fatal_error("dfb file could not be opened", out);
   }
   for(int n=0; n<tetrahedrons_count; n++){
     for(int m=0; m<4; m++){
@@ -89,19 +87,19 @@ void cCellMesh::get_mesh(std::string file_name){
   // get the apical triangles (int32 count, int32 triangle indices)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
   apical_triangles_count = i32;
-  parent->out << "<DEBUG> mesh num apical = " << apical_triangles_count << std::endl;
+  out << "<DEBUG> mesh num apical = " << apical_triangles_count << std::endl;
   apical_triangles.resize(apical_triangles_count, Eigen::NoChange);
   for(int n=0; n<apical_triangles_count; n++){
     cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
     apical_triangles(n) = i32-1; // change to zero indexed
   }
   // DEBUGGING - load matlab apical triangles
-  std::ifstream matapic("matlab_apical_cell_" + std::to_string(parent->cell_number) + "_zeroidx.dat");
+  std::ifstream matapic("matlab_apical_cell_" + std::to_string(cell_number) + "_zeroidx.dat");
   if (!matapic) {
-    utils::fatal_error("apical triangles file could not be opened", parent->out);
+    utils::fatal_error("apical triangles file could not be opened", out);
   }
   matapic >> apical_triangles_count;
-  parent->out << "<DEBUG> matlab num apical = " << apical_triangles_count << std::endl;
+  out << "<DEBUG> matlab num apical = " << apical_triangles_count << std::endl;
   apical_triangles.resize(apical_triangles_count, Eigen::NoChange);
   for(int n=0; n<apical_triangles_count; n++){
     matapic >> apical_triangles(n);
@@ -111,19 +109,19 @@ void cCellMesh::get_mesh(std::string file_name){
   // get the basal triangles (int32 count, int32 triangle indices)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
   basal_triangles_count = i32;
-  parent->out << "<DEBUG> mesh num basal = " << basal_triangles_count << std::endl;
+  out << "<DEBUG> mesh num basal = " << basal_triangles_count << std::endl;
   basal_triangles.resize(basal_triangles_count, Eigen::NoChange);
   for(int n=0; n<basal_triangles_count; n++){
     cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
     basal_triangles(n) = i32-1; // change to zero indexed
   }
   // DEBUGGING - load matlab basal triangles
-  std::ifstream matbasal("matlab_basal_cell_" + std::to_string(parent->cell_number) + "_zeroidx.dat");
+  std::ifstream matbasal("matlab_basal_cell_" + std::to_string(cell_number) + "_zeroidx.dat");
   if (!matbasal) {
-    utils::fatal_error("basal triangles file could not be opened", parent->out);
+    utils::fatal_error("basal triangles file could not be opened", out);
   }
   matbasal >> basal_triangles_count;
-  parent->out << "<DEBUG> matlab num basal = " << basal_triangles_count << std::endl;
+  out << "<DEBUG> matlab num basal = " << basal_triangles_count << std::endl;
   basal_triangles.resize(basal_triangles_count, Eigen::NoChange);
   for(int n=0; n<basal_triangles_count; n++){
     matbasal >> basal_triangles(n);
@@ -133,7 +131,7 @@ void cCellMesh::get_mesh(std::string file_name){
   // get the cell-to-cell data (int32 count, 3x-int32 this_triamgle, other_cell, other_triangle)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
   common_triangles_count = i32;
-  parent->out << "<DEBUG> num common = " << common_apical_triangles << std::endl;
+  out << "<DEBUG> num common = " << common_apical_triangles << std::endl;
   common_triangles.resize(common_triangles_count, Eigen::NoChange);
   for(int n=0; n<common_triangles_count; n++){
     for(int m=0; m<3; m++){
@@ -144,8 +142,8 @@ void cCellMesh::get_mesh(std::string file_name){
   cell_file.close();
 }
 
-void cCellMesh::identify_common_apical_triangles() {
-  parent->out << "<CellMesh> building common apical triangles list" << std::endl;
+void cCellMesh::identify_common_apical_triangles(std::ofstream& out, int cell_number) {
+  out << "<CellMesh> building common apical triangles list" << std::endl;
   // NOTE: this could be a feature of the mesh (i.e. included in the mesh file)
 
   common_apical_triangles.resize(apical_triangles_count, Eigen::NoChange);
@@ -176,24 +174,24 @@ void cCellMesh::identify_common_apical_triangles() {
       count++;
     }
   }
-  parent->out << "<CellMesh> apical triangles common with other cells: " << count << std::endl;
+  out << "<CellMesh> apical triangles common with other cells: " << count << std::endl;
 
   // now add on the apical triangles not in the common triangles list
   for (int i = 0; i < apical_triangles_count; i++) {
     if (not apical_mask[i]) {
       common_apical_triangles(count, tTri) = apical_triangles(i);
-      common_apical_triangles(count, oCell) = parent->cell_number - 1;  // needs to be zero-indexed
+      common_apical_triangles(count, oCell) = cell_number - 1;  // needs to be zero-indexed
       common_apical_triangles(count, oTri) = apical_triangles(i);
       count++;
     }
   }
 }
 
-void cCellMesh::print_info(){
-  parent->out << "<CellMesh> vertices_count: " << vertices_count << std::endl;
-  parent->out << "<CellMesh> tetrahedrons_count: " << tetrahedrons_count << std::endl;
-  parent->out << "<CellMesh> surface_triangles_count: " << surface_triangles_count << std::endl;
-  parent->out << "<CellMesh> apical_triangles_count: " << apical_triangles_count << std::endl;
-  parent->out << "<CellMesh> basal_triangles_count: " << basal_triangles_count << std::endl;
-  parent->out << "<CellMesh> common_triangles_count: " << common_triangles_count << std::endl;
+void cCellMesh::print_info(std::ofstream& out){
+  out << "<CellMesh> vertices_count: " << vertices_count << std::endl;
+  out << "<CellMesh> tetrahedrons_count: " << tetrahedrons_count << std::endl;
+  out << "<CellMesh> surface_triangles_count: " << surface_triangles_count << std::endl;
+  out << "<CellMesh> apical_triangles_count: " << apical_triangles_count << std::endl;
+  out << "<CellMesh> basal_triangles_count: " << basal_triangles_count << std::endl;
+  out << "<CellMesh> common_triangles_count: " << common_triangles_count << std::endl;
 }
