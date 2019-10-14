@@ -161,7 +161,6 @@ void cCell_calcium::make_matrices(){
     // RyR and PLC spatial factors per element
     element_data(n, RYR_e) = 
       ((mesh->dfa[n] < p[d_RyR]) ? (1.0 - ((p[d_RyR] - mesh->dfa[n]) / p[d_RyR])) : 1.0);
-//      (mesh->dfa[n] < p[d_RyR]) ? mesh->dfa[n] : 1.0;  // Matlab version
     element_data(n, PLC_e) = (mesh->dfb[n] < p[PLCds] && mesh->dfa[n] > p[PLCdl]) ? 1.0 : 0.0;
 
     tCalcs Ic = V * p[Dc]; // diffusion coefficients
