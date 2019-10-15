@@ -43,7 +43,7 @@ void utils::get_parameters(const std::string file_id, int ptype, int cell_num, t
     "c0", "ip0", "ce0", "Gamma", \
     "Dc", "Dp", "De", "Fc", "Fip", \
     "d_RyR", "V_RyR", "K_RyR", "K_RyR2", "m_RyR", "n_RyR", \
-    "k_beta", "K_p", "K_c", "K_h", "kIPR", \
+    "IPRdn", "k_beta", "K_p", "K_c", "K_h", "kIPR", \
     "V_p", "k_p", "K_bar", \
     "PLCds", "PLCdl", "V_3K", "V_5K", "K_PLC", "K3K", "V_PLC", \
     "h0", "K_tau", "tau_max", \

@@ -101,7 +101,7 @@ void cCellMesh::get_mesh(std::string file_name){
 		n_dfa(surface_triangles(n,0)) + 
 		n_dfa(surface_triangles(n,1)) +
 		n_dfa(surface_triangles(n,2))) / 3.0;
-    if (d < 0.8) {
+    if (d < parent->p[IPRdn]) {
 	  apical_triangles(apical_triangles_count++) = n;
     }
   }
@@ -130,7 +130,7 @@ void cCellMesh::get_mesh(std::string file_name){
   // **************** DEBUG ************************************
   //utils::save_matrix("vertices_" + id + ".bin", vertices);
   //utils::save_integer_matrix("triangles_" + id + ".bin", surface_triangles);
-  //utils::save_integer_matrix("apical_" + id + ".bin", apical_triangles);
+  utils::save_integer_matrix("apical_" + id + ".bin", apical_triangles);
   //utils::save_integer_matrix("tetrahedrons_" + id + ".bin", tetrahedrons);
   //utils::save_matrix("n_dfa_" + id + ".bin", n_dfa);
   //utils::save_matrix("e_dfa_" + id + ".bin", e_dfa);

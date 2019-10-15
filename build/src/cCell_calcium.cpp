@@ -28,6 +28,7 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank) {
   out << "<Cell_x> id: " << id << std::endl;
   out << "<Cell_x> host_name: " << host_name << std::endl;
 
+  utils::get_parameters(acinus_id, calciumParms, cell_number, p, out);
   mesh = new cCellMesh(id, this);
   mesh->print_info();
   out << "<Cell_x> common faces with cells:";
@@ -58,7 +59,6 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank) {
   }
   exchange_load_ip.resize(mesh->vertices_count, Eigen::NoChange);
 
-  utils::get_parameters(acinus_id, calciumParms, cell_number, p, out);
   make_matrices();  // create the constant matrices
   init_solvec(); // initialise solution buffer
   ca_file.open(id + "_ca.bin", std::ios::binary);
