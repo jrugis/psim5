@@ -30,6 +30,7 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank) {
 
   utils::get_parameters(acinus_id, calciumParms, cell_number, p, out);
   mesh = new cCellMesh(id, this);
+  mesh->mesh_calcs();  // calculate derived properties
   mesh->print_info();
   out << "<Cell_x> common faces with cells:";
   int other_cell = -1;

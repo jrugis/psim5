@@ -30,12 +30,55 @@ cCellMesh::cCellMesh(std::string mesh_name, cCell_calcium* p){
 cCellMesh::~cCellMesh(){
 }
 
+void cCellMesh::mesh_calcs(){
+  parent->out << "<CellMesh> calculating derived properties... " << std::endl;
+  // local variables
+  cLumenTree lumen(parent);
+
+  // calculate the distance from nodes to the lumen
+  n_dfa.resize(vertices_count, Eigen::NoChange);
+  for(int n=0; n<vertices_count; n++){
+    n_dfa(n) = lumen.get_dnl(vertices.row(n));
+  }
+  // calculate the distance from elements to the lumen  
+  e_dfa.resize(tetrahedrons_count, Eigen::NoChange);
+  for(int n=0; n<tetrahedrons_count; n++){
+    tCalcs d = 0.0; // distance from element to apical
+    for(int m=0; m<4; m++){
+	  d += n_dfa(tetrahedrons(n,m));  // sum distance from node to apical
+    }
+	e_dfa(n) = d / 4.0; // the average over four vertices
+  }
+  // calculate the apical triangle indices
+  apical_triangles.resize(surface_triangles_count, Eigen::NoChange); // overkill size for now
+  apical_triangles_count = 0;
+  for(int n=0; n<surface_triangles_count; n++){
+	double d = (                         // triangle distance from apical
+		n_dfa(surface_triangles(n,0)) + 
+		n_dfa(surface_triangles(n,1)) +
+		n_dfa(surface_triangles(n,2))) / 3.0;
+    if (d < parent->p[IPRdn]) {
+	  apical_triangles(apical_triangles_count++) = n;
+    }
+  }
+  apical_triangles.conservativeResize(apical_triangles_count, 1); // actual triangles count
+
+  // calculate the cell-to-cell data (this_triamgle, other_cell, other_triangle)
+  //common_triangles.resize(surface_triangles_count, Eigen::NoChange);
+  //common_triangles_count = 0;
+  // ....
+  //common_triangles.conservativeResize(common_triangles_count, 1); // actual triangles count
+
+  // calculate the basal triangle indices
+  // ....
+}
+
 void cCellMesh::get_mesh(std::string file_name){
+  parent->out << "<CellMesh> reading mesh file... " << std::endl;
   // local variables
   std::ifstream cell_file(file_name.c_str(), std::ios::in | std::ios::binary); // open the mesh file
   uint32_t i32;
   float f32;
-  cLumenTree lumen(parent);
 
   // check the file is open
   if (not cell_file.is_open()) {
@@ -50,10 +93,6 @@ void cCellMesh::get_mesh(std::string file_name){
       cell_file.read(reinterpret_cast<char *>(&f32), sizeof(f32));
       vertices(n,m) = f32;
     }
-    // calculate the distance from node to the lumen
-    n_dfa.resize(vertices_count, Eigen::NoChange);
-	//n_dfa(n) = lumen->get_dnl(vertices.block<1,3>(n, 0));
-	n_dfa(n) = lumen.get_dnl(vertices.row(n));
   }
   // get the surface triangles (int32 count, 3x-int32 vertex indices)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
@@ -69,43 +108,22 @@ void cCellMesh::get_mesh(std::string file_name){
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
   tetrahedrons_count = i32;
   tetrahedrons.resize(tetrahedrons_count, Eigen::NoChange);
-  e_dfa.resize(tetrahedrons_count, Eigen::NoChange);
   e_dfb.resize(tetrahedrons_count, Eigen::NoChange);
   for(int n=0; n<tetrahedrons_count; n++){
-    tCalcs d = 0.0; // distance from element to apical
     for(int m=0; m<4; m++){
       cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
       tetrahedrons(n,m) = i32-1;      // change to zero indexed
-	  d += n_dfa(tetrahedrons(n,m));  // sum distance from node to apical
     }
-    cell_file.read(reinterpret_cast<char *>(&f32), sizeof(f32));
-    //e_dfa(n) = f32;
-	e_dfa(n) = d / 4; // the average over four vertices
-    cell_file.read(reinterpret_cast<char *>(&f32), sizeof(f32));
-    e_dfb(n) = f32;
+   cell_file.read(reinterpret_cast<char *>(&f32), sizeof(f32));  // e_dfa
+   cell_file.read(reinterpret_cast<char *>(&f32), sizeof(f32));  // e_dfb
+   e_dfb(n) = f32;
   }
   // get the apical triangles (int32 count, int32 triangle indices)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
   apical_triangles_count = i32;
-  //apical_triangles.resize(apical_triangles_count, Eigen::NoChange);
   for(int n=0; n<apical_triangles_count; n++){
 	cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
-    //apical_triangles(n) = i32-1; // change to zero indexed
   }
-  
-  apical_triangles.resize(surface_triangles_count, Eigen::NoChange); // overkill size for now
-  apical_triangles_count = 0;
-  for(int n=0; n<surface_triangles_count; n++){
-	double d = (    // triangle distance from apical
-		n_dfa(surface_triangles(n,0)) + 
-		n_dfa(surface_triangles(n,1)) +
-		n_dfa(surface_triangles(n,2))) / 3.0;
-    if (d < parent->p[IPRdn]) {
-	  apical_triangles(apical_triangles_count++) = n;
-    }
-  }
-  apical_triangles.conservativeResize(apical_triangles_count, 1); // actual triangles count
-    
   // get the basal triangles (int32 count, int32 triangle indices)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
   basal_triangles_count = i32;
@@ -114,7 +132,8 @@ void cCellMesh::get_mesh(std::string file_name){
     cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
     basal_triangles(n) = i32-1; // change to zero indexed
   }
-  // get the cell-to-cell data (int32 count, 3x-int32 this_triamgle, other_cell, other_triangle)
+  // get the cell-to-cell data (int32 count, int32 this_triamgle, int32 other_cell, int32 other_triangle)
+  parent->out << "<CellMesh> get cell-to-cell tris... " << std::endl;
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
   common_triangles_count = i32;
   common_triangles.resize(common_triangles_count, Eigen::NoChange);
@@ -125,14 +144,6 @@ void cCellMesh::get_mesh(std::string file_name){
     }
   }
   cell_file.close();
-  // **************** DEBUG ************************************
-  //utils::save_matrix("vertices_" + id + ".bin", vertices);
-  //utils::save_integer_matrix("triangles_" + id + ".bin", surface_triangles);
-  utils::save_integer_matrix("apical_" + id + ".bin", apical_triangles);
-  //utils::save_integer_matrix("tetrahedrons_" + id + ".bin", tetrahedrons);
-  //utils::save_matrix("n_dfa_" + id + ".bin", n_dfa);
-  //utils::save_matrix("e_dfa_" + id + ".bin", e_dfa);
-  // ***********************************************************
 }
 
 void cCellMesh::print_info(){
@@ -142,4 +153,13 @@ void cCellMesh::print_info(){
   parent->out << "<CellMesh> apical_triangles_count: " << apical_triangles_count << std::endl;
   parent->out << "<CellMesh> basal_triangles_count: " << basal_triangles_count << std::endl;
   parent->out << "<CellMesh> common_triangles_count: " << common_triangles_count << std::endl;
+
+  // **************** DEBUG ************************************
+  //utils::save_matrix("vertices_" + id + ".bin", vertices);
+  //utils::save_integer_matrix("triangles_" + id + ".bin", surface_triangles);
+  utils::save_integer_matrix("tetrahedrons_" + id + ".bin", tetrahedrons);
+  utils::save_integer_matrix("apical_" + id + ".bin", apical_triangles);
+  //utils::save_matrix("n_dfa_" + id + ".bin", n_dfa);
+  //utils::save_matrix("e_dfa_" + id + ".bin", e_dfa);
+  // ***********************************************************
 }

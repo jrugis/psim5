@@ -19,6 +19,7 @@ class cCellMesh {
 public:
   cCellMesh(std::string mesh_name, cCell_calcium* parent);
   ~cCellMesh();
+  void mesh_calcs();
   void print_info();
 
   int vertices_count, tetrahedrons_count;
