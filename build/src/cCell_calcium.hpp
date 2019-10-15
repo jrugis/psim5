@@ -37,7 +37,7 @@ struct cfc {int cell; int fcount; int sindex;}; // other cell, connected face co
 
 class cCell_calcium {
 friend class cCellMesh;
-friend class cLumenBase;
+friend class cLumenTree;
 public:
   cCell_calcium(std::string host_name, int my_rank, int acinus_rank);
   ~cCell_calcium();

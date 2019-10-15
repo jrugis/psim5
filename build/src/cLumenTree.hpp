@@ -1,22 +1,22 @@
 /*
- * cLumenBase.hpp
+ * cLumenTree.hpp
  *
  *  Created on: 08/10/2019
  *      Author: jrugis
  */
 
-#ifndef CLUMENBASE_H_
-#define CLUMENBASE_H_
+#ifndef CLUMENTREE_H_
+#define CLUMENTREE_H_
 
 #include <string>
 
 #include "global_defs.hpp"
 #include "cCell_calcium.hpp"
 
-class cLumenBase {
+class cLumenTree {
 public:
-  cLumenBase(cCell_calcium* p);
-  ~cLumenBase();
+  cLumenTree(cCell_calcium* p);
+  ~cLumenTree();
   
   tDist get_dnl(Eigen::Vector3d p);
 
@@ -31,5 +31,5 @@ private:
   void print_info();
 };
 
-#endif /* CLUMENBASE_ */
+#endif /* CLUMENTREE_ */
 

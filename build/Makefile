@@ -34,7 +34,7 @@ CPP_INCLUDES = -I/usr/include
 
 EXE = ../run/psim5
 #OBJS = main.o utils.o cAcinus.o cLumen.o cCVodes.o cCell_flow.o cCell_calcium.o cCellMesh.o
-OBJS = main.o utils.o cAcinus.o cLumenBase.o cCell_calcium.o cCellMesh.o
+OBJS = main.o utils.o cAcinus.o cLumenTree.o cCell_calcium.o cCellMesh.o
 SRC = ./src
 
 all: $(EXE)
@@ -48,7 +48,7 @@ utils.o: $(SRC)/utils.cpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp
 cAcinus.o: $(SRC)/cAcinus.cpp $(SRC)/cAcinus.hpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
-cLumenBase.o: $(SRC)/cLumenBase.cpp $(SRC)/cLumenBase.hpp $(SRC)/utils.hpp
+cLumenTree.o: $(SRC)/cLumenTree.cpp $(SRC)/cLumenTree.hpp $(SRC)/utils.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
 #cLumen.o: $(SRC)/cLumen.cpp $(SRC)/cLumen.hpp

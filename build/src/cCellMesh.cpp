@@ -13,7 +13,7 @@
 #include <cmath>
 
 #include "utils.hpp"
-#include "cLumenBase.hpp"
+#include "cLumenTree.hpp"
 #include "cCell_calcium.hpp"
 #include "cCellMesh.hpp"
 
@@ -35,8 +35,7 @@ void cCellMesh::get_mesh(std::string file_name){
   std::ifstream cell_file(file_name.c_str(), std::ios::in | std::ios::binary); // open the mesh file
   uint32_t i32;
   float f32;
-  cLumenBase* lumen;  // needed for apical/basal mesh geometry calculations
-  lumen = new cLumenBase(parent);
+  cLumenTree lumen(parent);
 
   // check the file is open
   if (not cell_file.is_open()) {
@@ -54,7 +53,7 @@ void cCellMesh::get_mesh(std::string file_name){
     // calculate the distance from node to the lumen
     n_dfa.resize(vertices_count, Eigen::NoChange);
 	//n_dfa(n) = lumen->get_dnl(vertices.block<1,3>(n, 0));
-	n_dfa(n) = lumen->get_dnl(vertices.row(n));
+	n_dfa(n) = lumen.get_dnl(vertices.row(n));
   }
   // get the surface triangles (int32 count, 3x-int32 vertex indices)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
@@ -126,7 +125,6 @@ void cCellMesh::get_mesh(std::string file_name){
     }
   }
   cell_file.close();
-  delete lumen;
   // **************** DEBUG ************************************
   //utils::save_matrix("vertices_" + id + ".bin", vertices);
   //utils::save_integer_matrix("triangles_" + id + ".bin", surface_triangles);
