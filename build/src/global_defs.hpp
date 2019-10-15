@@ -91,7 +91,7 @@ enum model_parameters{ \
   d_RyR, V_RyR, K_RyR, K_RyR2, m_RyR, n_RyR, \
   k_beta, K_p, K_c, K_h, kIPR, \
   V_p, k_p, K_bar, \
-  d_PLC, V_3K, V_5K, K_PLC, K3K, V_PLC, \
+  PLCds, PLCdl, V_3K, V_5K, K_PLC, K3K, V_PLC, \
   h0, K_tau, tau_max, \
   g0, K_hRyR, tau, \
   PCOUNT};
