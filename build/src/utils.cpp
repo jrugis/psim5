@@ -19,6 +19,20 @@
 #include "global_defs.hpp"
 #include "utils.hpp"
 
+// get the center points of triangles 
+void utils::calc_tri_centers(
+         Eigen::Array<tCoord, Eigen::Dynamic, 3, Eigen::RowMajorBit> *centers,
+         Eigen::Array<tCoord, Eigen::Dynamic, 3, Eigen::RowMajorBit> *vertices,
+         Eigen::Array<int, Eigen::Dynamic, 3, Eigen::RowMajorBit> *triangles){
+  centers->resize(triangles->rows(), Eigen::NoChange);
+  for(int n=0; n<triangles->rows(); n++){
+    Eigen::Vector3d v1 = Eigen::Vector3d(vertices->row((*triangles)(n,0)));
+    Eigen::Vector3d v2 = Eigen::Vector3d(vertices->row((*triangles)(n,1)));
+    Eigen::Vector3d v3 = Eigen::Vector3d(vertices->row((*triangles)(n,2)));
+  	centers->row(n) = (v1 + v2 + v3) / 3.0;
+  }  
+}
+
 // NOTE: outputs error message to stderr and the process ".out" file
 void utils::fatal_error(const std::string msg, std::ofstream& out){
   std::string m = "ERROR: " + msg;

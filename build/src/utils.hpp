@@ -16,6 +16,10 @@
 
 namespace utils
 {
+  void calc_tri_centers(
+        Eigen::Array<tCoord, Eigen::Dynamic, 3, Eigen::RowMajorBit> *centers,
+        Eigen::Array<tCoord, Eigen::Dynamic, 3, Eigen::RowMajorBit> *vertices,
+        Eigen::Array<int, Eigen::Dynamic, 3, Eigen::RowMajorBit> *triangles);
   void fatal_error(const std::string msg, std::ofstream& out);
   void get_parameters(const std::string file_id, int ptype, int cell_num, tCalcs* p, std::ofstream& out);
   tDist get_distance(Eigen::Vector3d p, Eigen::Vector3d v, Eigen::Vector3d w);
