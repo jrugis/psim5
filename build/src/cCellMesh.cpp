@@ -48,7 +48,10 @@ void cCellMesh::mesh_calcs(){
     }
 	e_dfa(n) = d / 4.0; // the average over four vertices
   }
-  // determine the apical surface triangle indices
+  // determine the apical and the apical keep-out surface triangle indices 
+  Eigen::Array<int, Eigen::Dynamic, 1> apical_keepout; // keep-out triangle indicies
+  apical_keepout.resize(surface_triangles_count, Eigen::NoChange); // overkill size for now
+  int apical_keepout_count = 0;
   apical_triangles.resize(surface_triangles_count, Eigen::NoChange); // overkill size for now
   apical_triangles_count = 0;
   for(int n=0; n<surface_triangles_count; n++){
@@ -59,8 +62,12 @@ void cCellMesh::mesh_calcs(){
     if (d < parent->p[IPRdn]) {
 	  apical_triangles(apical_triangles_count++) = n;
     }
+    if (d < (parent->p[PLCdl])) {
+	  apical_keepout(apical_keepout_count++) = n;
+    }
   }
   apical_triangles.conservativeResize(apical_triangles_count, 1); // actual triangles count
+  apical_keepout.conservativeResize(apical_keepout_count, 1); // actual triangles count
 
   // determine the cell-to-cell connetivity data (this_triamgle, other_cell, other_triangle)
   //   do this by comparing surface triangle centers on this cell to those on the surface of every other cell
@@ -91,11 +98,21 @@ void cCellMesh::mesh_calcs(){
 
   // determine the basal triangle indices by considering all surface triangles
   //   then eliminating the common triangles and the triangles that are too close to the lumen
-  //
-  // eliminate the common triangles
-  // ...
-  // calculate the apical keep-out traingles and eliminate them
-  // ...
+  basal_triangles.resize(surface_triangles_count, Eigen::NoChange); // overkill size for now
+  basal_triangles.setOnes(surface_triangles_count);
+  for(int n=0; n<common_triangles_count; n++){ // eliminate the common triangles
+    basal_triangles(common_triangles(n,0)) = 0;
+  }
+  for(int n=0; n<apical_keepout_count; n++){ // eliminate the apical keepout triangles
+    basal_triangles(apical_keepout(n)) = 0;
+  }
+  basal_triangles_count = 0;
+  for(int n=0; n<surface_triangles_count; n++){ // convert what's left to a list of indices
+    if(basal_triangles(n)){
+      basal_triangles(basal_triangles_count++) = n;
+    }
+  }  
+  basal_triangles.conservativeResize(basal_triangles_count, Eigen::NoChange); // actual size
 
   // calculate the distance from elements to basal surface
   //   use the average of the element-vertex to nearest-basal-triangle-vertex distances  
@@ -195,6 +212,7 @@ void cCellMesh::print_info(){
   utils::save_integer_matrix("apical_" + id + ".bin", apical_triangles);
   //utils::save_matrix("n_dfa_" + id + ".bin", n_dfa);
   //utils::save_matrix("e_dfa_" + id + ".bin", e_dfa);
+  //utils::save_integer_matrix("common_" + id + ".bin", common_triangles);
   utils::save_integer_matrix("basal_" + id + ".bin", basal_triangles);
   //utils::save_matrix("e_dfb_" + id + ".bin", e_dfb);
   // ***********************************************************
