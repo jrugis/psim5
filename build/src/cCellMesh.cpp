@@ -30,9 +30,7 @@ cCellMesh::cCellMesh(std::string mesh_name, cCell_calcium* p){
 cCellMesh::~cCellMesh(){
 }
 
-void cCellMesh::mesh_calcs(){
-  parent->out << "<CellMesh> calculating derived properties... " << std::endl;
-
+void cCellMesh::calc_dfa(){
   // calculate the distance from nodes to the lumen
   cLumenTree lumen(parent);
   n_dfa.resize(vertices_count, Eigen::NoChange);
@@ -42,35 +40,16 @@ void cCellMesh::mesh_calcs(){
   // calculate the distance from elements to the lumen  
   e_dfa.resize(tetrahedrons_count, Eigen::NoChange);
   for(int n=0; n<tetrahedrons_count; n++){
-    tCalcs d = 0.0; // distance from element to apical
-    for(int m=0; m<4; m++){
-	  d += n_dfa(tetrahedrons(n,m));  // sum distance from node to apical
-    }
-	e_dfa(n) = d / 4.0; // the average over four vertices
+    e_dfa(n) = (n_dfa(tetrahedrons(n,0)) +
+  		        n_dfa(tetrahedrons(n,1)) +
+   		        n_dfa(tetrahedrons(n,2)) +
+   			    n_dfa(tetrahedrons(n,3))) / 4.0;	  
   }
-  // determine the apical and the apical keep-out surface triangle indices 
-  Eigen::Array<int, Eigen::Dynamic, 1> apical_keepout; // keep-out triangle indicies
-  apical_keepout.resize(surface_triangles_count, Eigen::NoChange); // overkill size for now
-  int apical_keepout_count = 0;
-  apical_triangles.resize(surface_triangles_count, Eigen::NoChange); // overkill size for now
-  apical_triangles_count = 0;
-  for(int n=0; n<surface_triangles_count; n++){
-	double d = (                         // triangle distance from apical
-		n_dfa(surface_triangles(n,0)) + 
-		n_dfa(surface_triangles(n,1)) +
-		n_dfa(surface_triangles(n,2))) / 3.0;
-    if (d < parent->p[IPRdn]) {
-	  apical_triangles(apical_triangles_count++) = n;
-    }
-    if (d < (parent->p[PLCdl])) {
-	  apical_keepout(apical_keepout_count++) = n;
-    }
-  }
-  apical_triangles.conservativeResize(apical_triangles_count, 1); // actual triangles count
-  apical_keepout.conservativeResize(apical_keepout_count, 1); // actual triangles count
+}
 
-  // determine the cell-to-cell connetivity data (this_triamgle, other_cell, other_triangle)
-  //   do this by comparing surface triangle centers on this cell to those on the surface of every other cell
+// determine the cell-to-cell connetivity data (this_triamgle, other_cell, other_triangle)
+//   do this by comparing surface triangle centers on this cell to those on every other cell
+void cCellMesh::calc_common(){
   Eigen::Array<tCoord, Eigen::Dynamic, 3, Eigen::RowMajorBit> this_centers; // calculate this cell surface triangle centers
   utils::calc_tri_centers(&this_centers, &vertices, &surface_triangles);
   int ci = id.find_last_of('c') + 1; // to split the mesh id string, find the position of the last "c"
@@ -95,6 +74,25 @@ void cCellMesh::mesh_calcs(){
   	delete other_mesh; // release temp other_mesh
   }
   common_triangles.conservativeResize(common_triangles_count, Eigen::NoChange); // actual size
+}
+
+void cCellMesh::calc_apical_basal(){
+  // determine the apical and the apical keep-out surface triangle indices 
+  Eigen::Array<int, Eigen::Dynamic, 1> apical_keepout; // keep-out triangle indicies
+  apical_keepout.resize(surface_triangles_count, Eigen::NoChange); // overkill size for now
+  int apical_keepout_count = 0;
+  apical_triangles.resize(surface_triangles_count, Eigen::NoChange); // overkill size for now
+  apical_triangles_count = 0;
+  for(int n=0; n<surface_triangles_count; n++){
+	double d = (                         // triangle distance from apical
+		n_dfa(surface_triangles(n,0)) + 
+  		n_dfa(surface_triangles(n,1)) +
+  		n_dfa(surface_triangles(n,2))) / 3.0;
+    if (d < parent->p[IPRdn]) apical_triangles(apical_triangles_count++) = n;
+    if (d < (parent->p[PLCdl])) apical_keepout(apical_keepout_count++) = n;
+  }
+  apical_triangles.conservativeResize(apical_triangles_count, 1); // actual triangles count
+  apical_keepout.conservativeResize(apical_keepout_count, 1); // actual triangles count
 
   // determine the basal triangle indices by considering all surface triangles
   //   then eliminating the common triangles and the triangles that are too close to the lumen
@@ -113,16 +111,52 @@ void cCellMesh::mesh_calcs(){
     }
   }  
   basal_triangles.conservativeResize(basal_triangles_count, Eigen::NoChange); // actual size
+}
 
-  // calculate the distance from elements to basal surface
-  //   use the average of the element-vertex to nearest-basal-triangle-vertex distances  
-  // 
-  // list the basal vertices
-  // ...
-  // find the distance from every node to the nearest basal vertex (n_dnb)
-  // ...
-  // for each tet calculate e_dnb as the average it's vertice dnb's
-  // ...
+// calculate the distance from elements to basal surface
+//   use the average of the element-vertex to nearest-basal-triangle-vertex distances  
+void cCellMesh::calc_dfb(){
+  // get the basal vertices
+  Eigen::Array<int, Eigen::Dynamic, 1> basal_verts; // the basal triangle vertices
+  basal_verts.resize(vertices_count, Eigen::NoChange); // overkill size for now
+  basal_verts.setZero(vertices_count);
+  for(int n=0; n<basal_triangles_count; n++){
+	Eigen::Vector3i vi = Eigen::Vector3i(surface_triangles.row(basal_triangles(n)));
+    for(int i=0; i<3; i++) basal_verts(vi(i)) = 1; // flag vertex as basal
+  }
+  int basal_verts_count = 0;
+  for(int n=0; n<vertices_count; n++){ // convert flags to a list of basal indices
+    if(basal_verts(n)) basal_verts(basal_verts_count++) = n;
+  }  
+  basal_verts.conservativeResize(basal_verts_count, Eigen::NoChange); // actual size
+  // calculate the (per node) node to nearest basal node distance
+  Eigen::Array<tDist, Eigen::Dynamic, 1> n_dfb;
+  n_dfb.resize(vertices_count, Eigen::NoChange);
+  for(int n=0; n<vertices_count; n++){
+	Eigen::Vector3d p1 = Eigen::Vector3d(vertices.row(n));
+  	n_dfb(n) = 1000.0; // large dummy value
+    for(int m=0; m<basal_verts_count; m++){
+  	  Eigen::Vector3d p2 = Eigen::Vector3d(vertices.row(basal_verts(m)));
+  	  double d = (p1-p2).norm();
+  	  if(d < n_dfb(n)) n_dfb(n) = d;
+    }
+  }
+  // for each tet calculate e_dnb as the average it's vertex dnb's
+  e_dfb.resize(tetrahedrons_count, Eigen::NoChange);
+  for(int n=0; n<tetrahedrons_count; n++){  
+    e_dfb = (n_dfb(tetrahedrons(n,0)) +
+  		     n_dfb(tetrahedrons(n,1)) +
+  		     n_dfb(tetrahedrons(n,2)) +
+  			 n_dfb(tetrahedrons(n,3))) / 4.0;	  
+  }
+}
+
+void cCellMesh::mesh_calcs(){
+  parent->out << "<CellMesh> calculating derived properties... " << std::endl;
+  calc_common();
+  calc_dfa();           // do this first,       distance from apical (per node and per element)
+  calc_apical_basal();  // then this,           identify apical and basal triangles
+  calc_dfb();           // finally this.        distance from basal (per element)
 }
 
 void cCellMesh::get_mesh(std::string file_name){
@@ -131,7 +165,7 @@ void cCellMesh::get_mesh(std::string file_name){
   std::ifstream cell_file(file_name.c_str(), std::ios::in | std::ios::binary); // open the mesh file
   uint32_t i32;
   float f32;
-
+  
   // check the file is open
   if (not cell_file.is_open()) {
     utils::fatal_error("mesh file " + file_name + " could not be opened", parent->out);
@@ -156,42 +190,14 @@ void cCellMesh::get_mesh(std::string file_name){
       surface_triangles(n,m) = i32-1; // change to zero indexed
     }
   }
-  // get the element tetrahedrons (int32 count, 4x-int32 vertex indices, float32 dfa, float32 dfb)
+  // get the element tetrahedrons (int32 count, 4x-int32 vertex indices)
   cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
   tetrahedrons_count = i32;
   tetrahedrons.resize(tetrahedrons_count, Eigen::NoChange);
-  e_dfb.resize(tetrahedrons_count, Eigen::NoChange);
   for(int n=0; n<tetrahedrons_count; n++){
     for(int m=0; m<4; m++){
       cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
       tetrahedrons(n,m) = i32-1;      // change to zero indexed
-    }
-   cell_file.read(reinterpret_cast<char *>(&f32), sizeof(f32));  // e_dfa
-   cell_file.read(reinterpret_cast<char *>(&f32), sizeof(f32));  // e_dfb
-   e_dfb(n) = f32;
-  }
-  // get the apical triangles (int32 count, int32 triangle indices)
-  cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
-  apical_triangles_count = i32;
-  for(int n=0; n<apical_triangles_count; n++){
-	cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
-  }
-  // get the basal triangles (int32 count, int32 triangle indices)
-  cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
-  basal_triangles_count = i32;
-  basal_triangles.resize(basal_triangles_count, Eigen::NoChange);
-  for(int n=0; n<basal_triangles_count; n++){
-    cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
-    basal_triangles(n) = i32-1; // change to zero indexed
-  }
-  // get the cell-to-cell data (int32 count, int32 this_triamgle, int32 other_cell, int32 other_triangle)
-  cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
-  common_triangles_count = i32;
-  common_triangles.resize(common_triangles_count, Eigen::NoChange);
-  for(int n=0; n<common_triangles_count; n++){
-    for(int m=0; m<3; m++){
-      cell_file.read(reinterpret_cast<char *>(&i32), sizeof(i32));
-      common_triangles(n,m) = i32-1; // change to zero indexed
     }
   }
   cell_file.close();
@@ -212,8 +218,8 @@ void cCellMesh::print_info(){
   utils::save_integer_matrix("apical_" + id + ".bin", apical_triangles);
   //utils::save_matrix("n_dfa_" + id + ".bin", n_dfa);
   //utils::save_matrix("e_dfa_" + id + ".bin", e_dfa);
-  //utils::save_integer_matrix("common_" + id + ".bin", common_triangles);
-  utils::save_integer_matrix("basal_" + id + ".bin", basal_triangles);
+  utils::save_integer_matrix("common_" + id + ".bin", common_triangles);
+  //utils::save_integer_matrix("basal_" + id + ".bin", basal_triangles);
   //utils::save_matrix("e_dfb_" + id + ".bin", e_dfb);
   // ***********************************************************
 }

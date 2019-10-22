@@ -39,6 +39,10 @@ private:
   std::string id;
   cCell_calcium* parent;
   void get_mesh(std::string file_name);
+  void calc_common();
+  void calc_dfa();
+  void calc_apical_basal();
+  void calc_dfb();
 };
 
 #endif /* CCELLMESH_H_ */
