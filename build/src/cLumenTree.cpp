@@ -14,10 +14,10 @@
 #include "cCell_calcium.hpp"
 #include "cLumenTree.hpp"
 #include "utils.hpp"
-
-cLumenTree::cLumenTree(cCell_calcium* p) : parent(p)
+cLumenTree::cLumenTree(std::ofstream& _out)
 {
   id = "l1";
+  out = &(_out);
   get_segments();
 }
 
@@ -31,7 +31,7 @@ void cLumenTree::get_segments()
   std::vector<std::string> tokens;                                              // tokenized line
 
   // check the file is open
-  if (not lumen_file.is_open()) { utils::fatal_error("lumen file " + file_name + " could not be opened", parent->out); }
+  if (not lumen_file.is_open()) { utils::fatal_error("lumen file " + file_name + " could not be opened", *out); }
   // get the lumen tree points
   getline(lumen_file, line);
   boost::split(tokens, line, boost::is_any_of(" "), boost::token_compress_on);
@@ -58,7 +58,7 @@ void cLumenTree::get_segments()
   print_info();
 }
 
-double cLumenTree::get_dnl(Eigen::Vector3d p)
+double cLumenTree::get_dnl(const Eigen::Vector3d p)
 {
   double d = 100.0; // large dummy initial distance
   Eigen::Vector3d w, v;
@@ -72,6 +72,6 @@ double cLumenTree::get_dnl(Eigen::Vector3d p)
 
 void cLumenTree::print_info()
 {
-  parent->out << "<LumenTree> number of points: " << points_count << std::endl;
-  parent->out << "<LumenTree> number of segments: " << segments_count << std::endl;
+  *out << "<LumenTree> number of points: " << points_count << std::endl;
+  *out << "<LumenTree> number of segments: " << segments_count << std::endl;
 }

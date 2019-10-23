@@ -113,7 +113,54 @@ double utils::get_distance(const Vector3d& p, const Vector3d& v, const Vector3d&
   return ((projection - p).norm());                                 // return distance(p, projection)
 }
 
-void utils::save_matrix(std::string file_name, const MatrixNNd& mat)
+void utils::read_mesh(const std::string file_name,
+                      int& vertices_count,
+                      MatrixN3d& vertices,
+                      int& surface_triangles_count,
+                      MatrixN3i& surface_triangles,
+                      int& tetrahedrons_count,
+                      MatrixN4i& tetrahedrons,
+                      std::ofstream& out)
+{
+  std::ifstream cell_file(file_name + ".bmsh", std::ios::in | std::ios::binary); // open the mesh file
+  if (not cell_file.is_open()) { utils::fatal_error("mesh file " + file_name + " could not be opened", out); }
+  uint32_t i32;
+  double f64;
+
+  // get the mesh vertices (int32 count, 3x-float32 vertices)
+  cell_file.read(reinterpret_cast<char*>(&i32), sizeof(i32));
+  vertices_count = i32;
+  vertices.resize(vertices_count, Eigen::NoChange);
+  for (int n = 0; n < vertices_count; n++) {
+    for (int m = 0; m < 3; m++) {
+      cell_file.read(reinterpret_cast<char*>(&f64), sizeof(f64));
+      vertices(n, m) = f64;
+    }
+  }
+  // get the surface triangles (int32 count, 3x-int32 vertex indices)
+  cell_file.read(reinterpret_cast<char*>(&i32), sizeof(i32));
+  surface_triangles_count = i32;
+  surface_triangles.resize(surface_triangles_count, Eigen::NoChange);
+  for (int n = 0; n < surface_triangles_count; n++) {
+    for (int m = 0; m < 3; m++) {
+      cell_file.read(reinterpret_cast<char*>(&i32), sizeof(i32));
+      surface_triangles(n, m) = i32; // NOTE: zero indexed
+    }
+  }
+  // get the element tetrahedrons (int32 count, 4x-int32 vertex indices)
+  cell_file.read(reinterpret_cast<char*>(&i32), sizeof(i32));
+  tetrahedrons_count = i32;
+  tetrahedrons.resize(tetrahedrons_count, Eigen::NoChange);
+  for (int n = 0; n < tetrahedrons_count; n++) {
+    for (int m = 0; m < 4; m++) {
+      cell_file.read(reinterpret_cast<char*>(&i32), sizeof(i32));
+      tetrahedrons(n, m) = i32; // NOTE: zero indexed
+    }
+  }
+  cell_file.close();
+}
+
+void utils::save_matrix(const std::string file_name, const MatrixNNd& mat)
 {
   int rows = mat.rows();
   int cols = mat.cols();
@@ -132,7 +179,7 @@ void utils::save_matrix(std::string file_name, const MatrixNNd& mat)
   delete (buf);
 }
 
-void utils::save_integer_matrix(std::string file_name, const MatrixNNi& mat)
+void utils::save_integer_matrix(const std::string file_name, const MatrixNNi& mat)
 {
   int rows = mat.rows();
   int cols = mat.cols();

@@ -13,7 +13,7 @@
 #include "global_defs.hpp"
 #include "utils.hpp"
 
-cLumen::cLumen(std::string host_name, int rank, int c_count, int a_rank)
+cLumen::cLumen(const std::string host_name, int rank, int c_count, int a_rank)
 {
   my_rank = rank;
   cell_count = c_count;

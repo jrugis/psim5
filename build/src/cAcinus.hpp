@@ -16,7 +16,7 @@
 class cAcinus {
   public:
   // cAcinus(std::string host_name, int my_rank, int cell_rank, int cell_count, int lumen_rank);
-  cAcinus(std::string host_name, int my_rank, int cell_rank, int cell_count);
+  cAcinus(const std::string host_name, int my_rank, int cell_rank, int cell_count);
   ~cAcinus();
   void run();
 

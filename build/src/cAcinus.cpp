@@ -15,7 +15,7 @@
 #include "utils.hpp"
 
 // cAcinus::cAcinus(std::string host_name, int rank, int c_rank, int c_count, int l_rank) {
-cAcinus::cAcinus(std::string host_name, int rank, int c_rank, int c_count)
+cAcinus::cAcinus(const std::string host_name, int rank, int c_rank, int c_count)
 {
   my_rank = rank;
   cell_rank = c_rank;
@@ -65,7 +65,7 @@ void cAcinus::run()
   while ((p[totalT] - t) > 0.000001) { // HARD CODED: assumes solver_dt always > 1us
     error = snd_recv(t, solver_dt);    // invoke the calcium solver
     if (error != 0.0) {                // change time step?
-                                       // ...
+        // ...        
     }
     // ... // invoke the fluid flow solver
     clock_gettime(CLOCK_REALTIME, &end);

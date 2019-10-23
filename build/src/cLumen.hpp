@@ -18,7 +18,7 @@ class cCell_flow;
 
 class cLumen {
   public:
-  cLumen(std::string host_name, int my_rank, int cell_count, int acinus_rank);
+  cLumen(const std::string host_name, int my_rank, int cell_count, int acinus_rank);
   ~cLumen();
   void run();
 

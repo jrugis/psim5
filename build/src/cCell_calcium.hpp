@@ -50,7 +50,7 @@ class cCell_calcium {
   friend class cLumenTree;
 
   public:
-  cCell_calcium(std::string host_name, int my_rank, int acinus_rank);
+  cCell_calcium(const std::string host_name, int my_rank, int acinus_rank);
   ~cCell_calcium();
   void run();
 

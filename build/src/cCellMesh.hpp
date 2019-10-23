@@ -17,9 +17,8 @@ class cCell_calcium;
 
 class cCellMesh {
   public:
-  cCellMesh(std::string mesh_name, cCell_calcium* parent);
+  cCellMesh(const std::string mesh_name, cCell_calcium* parent);
   ~cCellMesh();
-  void mesh_calcs();
   void print_info();
 
   int vertices_count, tetrahedrons_count;
@@ -38,11 +37,11 @@ class cCellMesh {
   private:
   std::string id;
   cCell_calcium* parent;
-  void get_mesh(std::string file_name);
   void calc_common();
   void calc_dfa();
   void calc_apical_basal();
   void calc_dfb();
+  void mesh_calcs();
 };
 
 #endif /* CCELLMESH_H_ */
