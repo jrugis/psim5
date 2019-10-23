@@ -21,18 +21,14 @@ class cCellMesh {
   ~cCellMesh();
   void print_info();
 
-  int vertices_count, tetrahedrons_count;
-  int surface_triangles_count, apical_triangles_count, basal_triangles_count;
-  int common_triangles_count;
-  MatrixN3d vertices;          // 3x coordinate
-  MatrixN3i surface_triangles; // 3x vertex
-  MatrixN4i tetrahedrons;      // 4x vertex
-  MatrixNCi common_triangles;  // this triangle, other cell, other triangle
-  MatrixN1i apical_triangles;  // surface triangle indicies
-  MatrixN1i basal_triangles;   // surface triangle indicies
-  MatrixN1d n_dfa;             // distance from apical (per node)
-  MatrixN1d e_dfa;             // distance from apical (per element)
-  MatrixN1d e_dfb;             // distance from basal (per element)
+  sMeshVals mesh_vals;        // vertices, surface_triangles, tetrahedrons and their counts
+  MatrixNCi common_triangles; // this triangle, other cell, other triangle
+  MatrixN1i apical_triangles; // surface triangle indicies
+  MatrixN1i basal_triangles;  // surface triangle indicies
+  MatrixN1d n_dfa;            // distance from apical (per node)
+  MatrixN1d e_dfa;            // distance from apical (per element)
+  MatrixN1d e_dfb;            // distance from basal (per element)
+  int common_triangles_count, apical_triangles_count, basal_triangles_count;
 
   private:
   std::string id;
