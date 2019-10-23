@@ -1,8 +1,8 @@
 /*
  * cAcinus.hpp
  *
- *  Created on: 26/04/2018
- *      Author: jrugis
+ *	Created on: 26/04/2018
+ *	Author: jrugis
  */
 
 #ifndef CACINUS_H_
@@ -14,21 +14,20 @@
 #include "global_defs.hpp"
 
 class cAcinus {
-public:
-  //cAcinus(std::string host_name, int my_rank, int cell_rank, int cell_count, int lumen_rank);
+  public:
+  // cAcinus(std::string host_name, int my_rank, int cell_rank, int cell_count, int lumen_rank);
   cAcinus(std::string host_name, int my_rank, int cell_rank, int cell_count);
   ~cAcinus();
   void run();
 
-private:
+  private:
   std::string id;
   std::ofstream out;
-  tCalcs p[PCOUNT]; // the calcium model parameters array
-  //int my_rank, cell_rank, cell_count, lumen_rank;
+  double p[PCOUNT]; // the calcium model parameters array
+  // int my_rank, cell_rank, cell_count, lumen_rank;
   int my_rank, cell_rank, cell_count;
 
-  tCalcs snd_recv(tCalcs t, tCalcs dt);
+  double snd_recv(double t, double dt);
 };
 
 #endif /* CACINUS_H_ */
-

@@ -8,22 +8,20 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <string>
 
 #include "global_defs.hpp"
 
-namespace utils
-{
-  void calc_tri_centers(
-        Eigen::Array<tCoord, Eigen::Dynamic, 3, Eigen::RowMajorBit> *centers,
-        Eigen::Array<tCoord, Eigen::Dynamic, 3, Eigen::RowMajorBit> *vertices,
-        Eigen::Array<int, Eigen::Dynamic, 3, Eigen::RowMajorBit> *triangles);
+namespace utils {
+  void calc_tri_centers(MatrixN3d& centers,
+                        const MatrixN3d& vertices,
+                        const MatrixN3i& triangles);
   void fatal_error(const std::string msg, std::ofstream& out);
-  void get_parameters(const std::string file_id, int ptype, int cell_num, tCalcs* p, std::ofstream& out);
-  tDist get_distance(Eigen::Vector3d p, Eigen::Vector3d v, Eigen::Vector3d w);
-  void save_matrix(std::string file_name, MatrixXXC mat);
-  void save_integer_matrix(std::string file_name, MatrixXXI mat);
-}
+  void get_parameters(const std::string file_id, int ptype, int cell_num, double* p, std::ofstream& out);
+  double get_distance(const Vector3d& p, const Vector3d& v, const Vector3d& w);
+  void save_matrix(std::string file_name, const MatrixNNd& mat);
+  void save_integer_matrix(std::string file_name, const MatrixNNi& mat);
+} // namespace utils
 #endif /* UTILS_H_ */

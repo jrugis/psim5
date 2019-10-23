@@ -1,17 +1,17 @@
 /*
  * main.cpp
  *
- *  Created on: 26/04/2018
- *      Author: jrugis
+ *	Created on: 26/04/2018
+ *	Author: jrugis
  */
 
 #include <iostream>
+#include <mpi.h>
 #include <time.h>
 #include <unistd.h>
-#include <mpi.h>
 
-#include "global_defs.hpp"
 #include "cAcinus.hpp"
+#include "global_defs.hpp"
 //#include "cLumen.hpp"
 #include "cCell_calcium.hpp"
 
@@ -25,7 +25,8 @@
 #define TEMP_SIZE 40
 
 // the main program function for each mpi node
-int main(int argc,char **args){
+int main(int argc, char** args)
+{
   int commSize, commRank;
   std::string host_name;
   struct timespec start, end;
@@ -35,7 +36,7 @@ int main(int argc,char **args){
   MPI_CHECK(MPI_Init(&argc, &args));
   MPI_CHECK(MPI_Comm_size(MPI_COMM_WORLD, &commSize));
   MPI_CHECK(MPI_Comm_rank(MPI_COMM_WORLD, &commRank));
-  if(commSize != MPI_NODES) mpi_abort(MPI_NODES_ABORT); // check mpiexec node count
+  if (commSize != MPI_NODES) mpi_abort(MPI_NODES_ABORT); // check mpiexec node count
 
   clock_gettime(CLOCK_REALTIME, &start);
 
@@ -46,21 +47,21 @@ int main(int argc,char **args){
 
   //*********************************************************************************
   // This code is running as EITHER an mpi process for the acinus,
-  if(commRank == ACINUS_RANK){
+  if (commRank == ACINUS_RANK) {
     std::cout << "<main> rank " << commRank << " running..." << std::endl;
-    //cAcinus* acinus = new cAcinus(host_name, commRank, CELLS_RANK, CELLS_COUNT, LUMEN_RANK);
+    // cAcinus* acinus = new cAcinus(host_name, commRank, CELLS_RANK, CELLS_COUNT, LUMEN_RANK);
     cAcinus* acinus = new cAcinus(host_name, commRank, CELLS_RANK, CELLS_COUNT);
     acinus->run();
     delete acinus;
   }
   // OR an mpi process for the lumenal flow,
-//  else if(commRank == LUMEN_RANK){ 
-//    cLumen* lumen = new cLumen(host_name, commRank, CELLS_COUNT, ACINUS_RANK);
-//    lumen->run();
-//    delete lumen;
-//  }
+  //	else if(commRank == LUMEN_RANK){
+  //		cLumen* lumen = new cLumen(host_name, commRank, CELLS_COUNT, ACINUS_RANK);
+  //		lumen->run();
+  //		delete lumen;
+  //	}
   // OR an mpi process for cellular calcium.
-  else{
+  else {
     cCell_calcium* cell = new cCell_calcium(host_name, commRank, ACINUS_RANK);
     cell->run();
     delete cell;

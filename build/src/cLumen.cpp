@@ -1,19 +1,20 @@
 /*
  * cLumen.cpp
  *
- *  Created on: 06/12/2018
- *      Author: jrugis
+ *	Created on: 06/12/2018
+ *			Author: jrugis
  */
 
 #include <iostream>
 #include <string>
 
-#include "global_defs.hpp"
-#include "utils.hpp"
 #include "cCell_flow.hpp"
 #include "cLumen.hpp"
+#include "global_defs.hpp"
+#include "utils.hpp"
 
-cLumen::cLumen(std::string host_name, int rank, int c_count, int a_rank) {
+cLumen::cLumen(std::string host_name, int rank, int c_count, int a_rank)
+{
   my_rank = rank;
   cell_count = c_count;
   acinus_rank = a_rank;
@@ -24,15 +25,13 @@ cLumen::cLumen(std::string host_name, int rank, int c_count, int a_rank) {
   out << "<Lumen> host_name: " << host_name << std::endl;
 
   utils::get_parameters(id, flowParms, 1, p, out);
-  for(int i = 0; i < CELLS_COUNT; i++) cells[i] = (new cCell_flow(i, p, out));
+  for (int i = 0; i < CELLS_COUNT; i++) cells[i] = (new cCell_flow(i, p, out));
 }
 
-cLumen::~cLumen() {
-  for(int i = 0; i < CELLS_COUNT; i++) delete cells[i];
+cLumen::~cLumen()
+{
+  for (int i = 0; i < CELLS_COUNT; i++) delete cells[i];
   out.close();
 }
 
-void cLumen::run() {
-}
-
-
+void cLumen::run() {}
