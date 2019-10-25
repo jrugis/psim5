@@ -31,7 +31,7 @@ void utils::calc_tri_centers(MatrixN3d& centers, const MatrixN3d& vertices, cons
   }
 }
 
-// NOTE: outputs error message to stderr and the process ".out" file
+// NOTE: outputs error message to stderr and the process "out" file
 void utils::fatal_error(const std::string msg, std::ofstream& out)
 {
   std::string m = "ERROR: " + msg;
