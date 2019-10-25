@@ -177,9 +177,9 @@ struct sMeshVals {
   int vertices_count;
   int surface_triangles_count;
   int tetrahedrons_count;
-  MatrixN3d vertices;           // 3x coordinate
-  MatrixN3i surface_triangles;  // 3x vertex
-  MatrixN4i tetrahedrons;       // 4x vertex
+  MatrixN3d vertices;          // 3x coordinate
+  MatrixN3i surface_triangles; // 3x vertex
+  MatrixN4i tetrahedrons;      // 4x vertex
 };
 
 //************************************************************************
