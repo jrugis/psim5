@@ -27,12 +27,6 @@ enum model_element_values { VOL_e, RYR_e, PLC_e, MODELECOUNT }; // element volum
 enum model_surface_values { AREA_s, MODELSCOUNT };              // surface triangle area
 enum model_node_values { BOOL_apical, MODELNCOUNT };            // apical (boolean)
 
-enum cell2cell { // cell to cell mpi message - triangle index, value
-  tInd,
-  tVal,
-  C2CCOUNT
-};
-
 // some convenience typedefs
 typedef Eigen::Array<double, Eigen::Dynamic, 1> ArrayX1C;
 typedef Eigen::Array<double, 1, DIFVARS> Array1VC;
@@ -44,6 +38,12 @@ struct cfc {
   int fcount;
   int sindex;
 }; // other cell, connected face count, common triangles start index
+
+enum cell2cell { // cell to cell mpi message - triangle index, value
+  tInd,
+  tVal,
+  C2CCOUNT
+};
 
 struct exchange_t {
   int triangle;
