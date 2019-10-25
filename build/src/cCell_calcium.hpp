@@ -39,12 +39,6 @@ struct cfc {
   int sindex;
 }; // other cell, connected face count, common triangles start index
 
-enum cell2cell { // cell to cell mpi message - triangle index, value
-  tInd,
-  tVal,
-  C2CCOUNT
-};
-
 struct exchange_t {
   int triangle;
   double value;

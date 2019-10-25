@@ -70,7 +70,7 @@ cCell_calcium::cCell_calcium(const std::string host_name, int my_rank, int a_ran
   // set up MPI datatype
   const int nitems = 2;
   int blocklengths[nitems] = {1, 1};
-  MPI_Datatype types[nitems] = {MPI_INT, MPI_DOUBLE}; // TODO: should be related to tCalcs
+  MPI_Datatype types[nitems] = {MPI_INT, MPI_DOUBLE};
   MPI_Aint offsets[nitems];
   offsets[0] = offsetof(exchange_t, triangle);
   offsets[1] = offsetof(exchange_t, value);

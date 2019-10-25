@@ -49,6 +49,13 @@ enum acinus2cell { dTime, cTime, sError, ACCOUNT };
 //  delta time, current time, apical calcium, basal calcium, cell volume
 enum acinus2lumen { dlTime, clTime, aC, Bc, cV, ALCOUNT };
 
+//************************************************************************ 
+// cell to cell mpi message
+// triangle index, value
+enum cell2cell{ \
+  tInd, tVal, \
+  C2CCOUNT};
+
 //************************************************************************
 // cell to cell connectivity
 //  this_triangle, other_cell, other_triangle
