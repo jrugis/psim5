@@ -60,23 +60,26 @@ void utils::get_parameters(const std::string file_id, int ptype, int cell_num, d
     "V_5K",   "K_PLC",  "K3K",     "V_PLC",  "h0",     "K_tau", "tau_max", "g0",    "K_hRyR", "tau"};
 
   // fluid flow parameters
-  // NOTE: these must match up with the enums in global_defs.hpp !!!
-  std::string fpnames[FPCOUNT] = {
-    "aNkcc1", "a1",   "a2", "a3",  "a4",  "r",  "alpha1", "aNaK", "GtNa", "GtK",  "GCl", "KCaCC", "eta1", "GK",
-    "KCaKC",  "eta2", "G1", "KNa", "KH",  "G4", "KCl",    "KB",   "GB",   "kn",   "kp",  "pHl",   "pHi",  "pHe",
-    "HCO3l",  "CO20", "Ul", "Cle", "Nae", "Ke", "HCO3e",  "CO2e", "Hl",   "CO2l", "Hy",  "La",    "Lb",   "Lt"};
+  std::string fpnames[FPCOUNT] = { \
+    "aNkcc1", "a1", "a2", "a3", "a4", \
+    "r", "alpha1", "aNaK", \
+    "GtNa", "GtK", \
+    "GCl", "KCaCC", "eta1", \
+    "GK", "KCaKC", "eta2", \
+    "G1", "KNa", "KH", \
+    "G4", "KCl", "KB", \
+    "GB", "kn", "kp", \
+    "pHl", "pHi", "pHe", "HCO3l", "CO20", "Ul", "Cle", "Nae", \
+    "Ke", "HCO3e", "CO2e", "Hl", "CO2l", "Hy", \
+    "La", "Lb", "Lt"}; // NOTE: these must match up with the enums in global_defs.hpp !!!
 
-  if (ptype == calciumParms) {
-    pnames = cpnames;
-    pcount = PCOUNT;
-  } // calcium simulation?
-  if (ptype == flowParms) {
-    pnames = fpnames;
-    pcount = FPCOUNT;
-  } // fluid flow?
+  if(ptype == calciumParms) {pnames = cpnames; pcount = PCOUNT;} // calcium simulation?
+  if(ptype == flowParms) {pnames = fpnames; pcount = FPCOUNT;}   // fluid flow?
 
-  if (not model_file.is_open()) { fatal_error("the model parameters file " + file_name + " could not be opened", out); }
-
+  if (not model_file.is_open()) {
+    fatal_error("the model parameters file " + file_name + " could not be opened", out);
+  }
+  
   out << "<utils> reading model parameters..." << std::endl;
   for (int n = 0; n < pcount; n++) p[n] = double(-1.0); // not-hit marker
   while (getline(model_file, line)) {

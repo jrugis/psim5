@@ -60,11 +60,20 @@ class cCell_calcium {
   std::ofstream out, ca_file, ip3_file, cer_file;
   int cell_number, acinus_rank;
   cCellMesh* mesh;
+<<<<<<< HEAD
   Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
   double p[PCOUNT];              // the model parameters array
   std::vector<cfc> cells;        // vector of connected cells and face counts
   double** exchange_send_buffer; // buffers for exchanging values between connected cells
   double** exchange_recv_buffer;
+=======
+  Eigen::SimplicialLDLT<Eigen::SparseMatrix<tCalcs>> solver;
+  tCalcs p[PCOUNT]; // the model parameters array
+  std::vector<cfc> cells; // vector of connected cells and face counts
+  MPI_Datatype mpi_exchange_type;
+  exchange_t** exchange_send_buffer;  // buffers for exchanging values between connected cells
+  exchange_t** exchange_recv_buffer;
+>>>>>>> master
   ArrayX1C exchange_load_ip;
 
   Eigen::Array<double, Eigen::Dynamic, MODELECOUNT> element_data;
