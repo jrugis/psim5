@@ -293,7 +293,7 @@ Array1VC cCell_calcium::get_apical_reactions(double c, double ip, double ce, dou
   double po = beta / (beta + p[k_beta] * (beta + alpha));
 
   Array1VC reactions;
-  reactions(0) = p[kIPR] * po * (ce - c);
+  reactions(0) = p[k_IPR] * po * (ce - c);
   reactions(1) = ip;
   reactions(2) = -reactions(0) / p[Gamma];
   return reactions;

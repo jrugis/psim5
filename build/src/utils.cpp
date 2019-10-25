@@ -56,30 +56,27 @@ void utils::get_parameters(const std::string file_id, int ptype, int cell_num, d
   std::string cpnames[PCOUNT] = {
     "delT",   "totalT", "Tstride", "PLCsrt", "PLCfin", "c0",    "ip0",     "ce0",   "Gamma",  "Dc",    "Dp",
     "De",     "Fc",     "Fip",     "d_RyR",  "V_RyR",  "K_RyR", "K_RyR2",  "m_RyR", "n_RyR",  "IPRdn", "IPRdf",
-    "k_beta", "K_p",    "K_c",     "K_h",    "kIPR",   "V_p",   "k_p",     "K_bar", "PLCds",  "PLCdl", "V_3K",
+    "k_beta", "K_p",    "K_c",     "K_h",    "k_IPR",  "V_p",   "k_p",     "K_bar", "PLCds",  "PLCdl", "V_3K",
     "V_5K",   "K_PLC",  "K3K",     "V_PLC",  "h0",     "K_tau", "tau_max", "g0",    "K_hRyR", "tau"};
 
   // fluid flow parameters
-  std::string fpnames[FPCOUNT] = { \
-    "aNkcc1", "a1", "a2", "a3", "a4", \
-    "r", "alpha1", "aNaK", \
-    "GtNa", "GtK", \
-    "GCl", "KCaCC", "eta1", \
-    "GK", "KCaKC", "eta2", \
-    "G1", "KNa", "KH", \
-    "G4", "KCl", "KB", \
-    "GB", "kn", "kp", \
-    "pHl", "pHi", "pHe", "HCO3l", "CO20", "Ul", "Cle", "Nae", \
-    "Ke", "HCO3e", "CO2e", "Hl", "CO2l", "Hy", \
-    "La", "Lb", "Lt"}; // NOTE: these must match up with the enums in global_defs.hpp !!!
+  // NOTE: these must match up with the enums in global_defs.hpp !!!
+  std::string fpnames[FPCOUNT] = {
+    "aNkcc1", "a1",   "a2", "a3",  "a4",  "r",  "alpha1", "aNaK", "GtNa", "GtK",  "GCl", "KCaCC", "eta1", "GK",
+    "KCaKC",  "eta2", "G1", "KNa", "KH",  "G4", "KCl",    "KB",   "GB",   "kn",   "kp",  "pHl",   "pHi",  "pHe",
+    "HCO3l",  "CO20", "Ul", "Cle", "Nae", "Ke", "HCO3e",  "CO2e", "Hl",   "CO2l", "Hy",  "La",    "Lb",   "Lt"};
 
-  if(ptype == calciumParms) {pnames = cpnames; pcount = PCOUNT;} // calcium simulation?
-  if(ptype == flowParms) {pnames = fpnames; pcount = FPCOUNT;}   // fluid flow?
+  if (ptype == calciumParms) {
+    pnames = cpnames;
+    pcount = PCOUNT;
+  } // calcium simulation?
+  if (ptype == flowParms) {
+    pnames = fpnames;
+    pcount = FPCOUNT;
+  } // fluid flow?
 
-  if (not model_file.is_open()) {
-    fatal_error("the model parameters file " + file_name + " could not be opened", out);
-  }
-  
+  if (not model_file.is_open()) { fatal_error("the model parameters file " + file_name + " could not be opened", out); }
+
   out << "<utils> reading model parameters..." << std::endl;
   for (int n = 0; n < pcount; n++) p[n] = double(-1.0); // not-hit marker
   while (getline(model_file, line)) {
@@ -119,7 +116,7 @@ double utils::get_distance(const Vector3d& p, const Vector3d& v, const Vector3d&
 void utils::read_mesh(const std::string file_name, sMeshVals& mesh_vals, std::ofstream& out)
 {
   std::ifstream cell_file(file_name + ".bmsh", std::ios::in | std::ios::binary); // open the mesh file
-  if (not cell_file.is_open()) { utils::fatal_error("mesh file " + file_name + " could not be opened", out); }
+  if (not cell_file.is_open()) { fatal_error("mesh file " + file_name + " could not be opened", out); }
   uint32_t i32;
   double f64;
 
