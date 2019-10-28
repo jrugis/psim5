@@ -1,8 +1,8 @@
 /*
  * cLumen.cpp
  *
- *  Created on: 06/12/2018
- *      Author: jrugis
+ *	Created on: 06/12/2018
+ *			Author: jrugis
  */
 
 #include <fstream>
@@ -22,9 +22,11 @@
 #include "cCVode.hpp"
 #include "cLSODA.hpp"
 #include "cLumen.hpp"
+#include "global_defs.hpp"
+#include "utils.hpp"
 
 
-cLumen::cLumen(std::string host_name, int rank, int c_rank, int c_count) :
+cLumen::cLumen(const std::string host_name, int rank, int c_rank, int c_count) :
     id("l1"), my_rank(rank), cell_rank(c_rank), cell_count(c_count), solver_initialised(false),
     tstride(1), step(0), solver_flag(-1), cvode_solver(nullptr), lsoda_solver(nullptr) {
   // file for storing standard output
@@ -262,7 +264,7 @@ void cLumen::receive_ca_inputs() {
   MPI_CHECK(MPI_Waitall(cell_count, recv_requests.data(), recv_statuses.data()));
 }
 
-void cLumen::iterate(tCalcs t, tCalcs dt) {
+void cLumen::iterate(double t, double dt) {
   step++;
   out << "<Lumen> step: " << step << " current_time: " << t << "s";
   out << " delta_time: " << dt << "s" << std::endl;
@@ -274,12 +276,12 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
   solve_fluid_flow(t, dt);
 
   // compute derivate at solution point too (required for volume term)
-  MatrixX1C x_ion_dot;
+  MatrixN1d x_ion_dot;
   x_ion_dot.resize(ffvars, Eigen::NoChange);
   fluid_flow_function(0, x_ion, x_ion_dot);
 
   // send volume and derivative back to cells (non-blocking)
-  std::vector<tCalcs> cell_volume_terms(2 * cell_count);
+  std::vector<double> cell_volume_terms(2 * cell_count);
   std::vector<MPI_Request> send_requests(cell_count);
   for (int i = 0; i < cell_count; i++) {
     int dest = cell_rank + i;
@@ -301,7 +303,7 @@ void cLumen::iterate(tCalcs t, tCalcs dt) {
 
 void cLumen::save_results() {
   // fluid flow rate
-  tCalcs flow_rate = compute_flow_rate();
+  double flow_rate = compute_flow_rate();
   out << "DEBUG: FLUID FLOW RATE = " << flow_rate << std::endl;
 
   // save to file, the 113 variables then the flow rate
@@ -311,7 +313,7 @@ void cLumen::save_results() {
   vars_file << flow_rate << std::endl;
 }
 
-void cLumen::solve_fluid_flow(tCalcs t, tCalcs dt) {
+void cLumen::solve_fluid_flow(double t, double dt) {
   auto start = std::chrono::system_clock::now();
 
   // call the solver
@@ -330,7 +332,7 @@ void cLumen::solve_fluid_flow(tCalcs t, tCalcs dt) {
   out << "<Lumen> solver duration: " << elapsed.count() << "s"<< std::endl;
 }
 
-void cLumen::fluid_flow_function(tCalcs t, MatrixX1C &x, MatrixX1C &xdot) {
+void cLumen::fluid_flow_function(double t, MatrixN1d &x, MatrixN1d &xdot) {
   // arrange inputs (matlab var.m)
   var(x);
   
@@ -432,13 +434,13 @@ void cLumen::lum_adj() {
 
   // multiply by adjacency matrix
   for (int i = 0; i < num_compartments; i++) {
-    Nald.col(i) = adj.col(i).cast<tCalcs>() * Nald_tmp;
-    Kld.col(i) = adj.col(i).cast<tCalcs>() * Kld_tmp;
-    Clld.col(i) = adj.col(i).cast<tCalcs>() * Clld_tmp;
-    Qtotd.col(i) = adj.col(i).cast<tCalcs>() * Qtotd_tmp;
-    JtNad.col(i) = adj.col(i).cast<tCalcs>() * JtNad_tmp;
-    JtKd.col(i) = adj.col(i).cast<tCalcs>() * JtKd_tmp;
-    JCld.col(i) = adj.col(i).cast<tCalcs>() * JCld_tmp;
+    Nald.col(i) = adj.col(i).cast<double>() * Nald_tmp;
+    Kld.col(i) = adj.col(i).cast<double>() * Kld_tmp;
+    Clld.col(i) = adj.col(i).cast<double>() * Clld_tmp;
+    Qtotd.col(i) = adj.col(i).cast<double>() * Qtotd_tmp;
+    JtNad.col(i) = adj.col(i).cast<double>() * JtNad_tmp;
+    JtKd.col(i) = adj.col(i).cast<double>() * JtKd_tmp;
+    JCld.col(i) = adj.col(i).cast<double>() * JCld_tmp;
   }
 
   // precalculate the water/ion influx  
@@ -452,7 +454,7 @@ void cLumen::lum_adj() {
   }
 }
 
-void cLumen::ieq(MatrixX1C &xdot) {
+void cLumen::ieq(MatrixN1d &xdot) {
   // This function calculates the differential equations of the intracellular
   // ionic concentrations and the membrane potentials of any given cell
   // using the int matrix of seven columns
@@ -505,11 +507,11 @@ void cLumen::fx_ba() {
     Jb(cell_no, Qb) = p[Lb] * (2.0 * (intra(cell_no, 1) + intra(cell_no, 2) + intra(cell_no, 5)) + p[CO20] - p[Ie]);
 
     // K+ Nernst Potential
-    tCalcs VK = RTF * log(p[Ke] / intra(cell_no, 2));
+    double VK = RTF * log(p[Ke] / intra(cell_no, 2));
 
     // Ca2+ Activated K+ Channels open probability
     // Note: PK was precalculated in cCell_calcium and stored in the last element of `cells_exchange_buffer[cell_no]`
-    tCalcs PK = cells_exchange_buffer[cell_no].back();
+    double PK = cells_exchange_buffer[cell_no].back();
 
     // Ca2+ Activated K+ Channels Total Flux
     Jb(cell_no, JK) = p[GK] * PK * (intra(cell_no, 7) - VK) / CONST_F;
@@ -556,39 +558,39 @@ void cLumen::fx_ap() {
     int num_neigh = neigh[c_no].size();
     for (int j = 0; j < num_neigh; j++) {
       int ngh = neigh[c_no][j];
-      tCalcs Sa_p = apical_area_ratios[c_no][j];  // ratio of shared apical area with this neighbour to full apical area
+      double Sa_p = apical_area_ratios[c_no][j];  // ratio of shared apical area with this neighbour to full apical area
 
       // Tight Junctional Membrane Potential
-      tCalcs Vt = intra(c_no, 6) - intra(c_no, 7);
+      double Vt = intra(c_no, 6) - intra(c_no, 7);
 
       // Ca2+ Activated Apical Cl- Channels
       // Note: PrCl was computed on cCell_calcium and stored in `cells_exchange_buffer[c_no]`
-      tCalcs PrCl = cells_exchange_buffer[c_no][j];
-      tCalcs VCl = Sa_p * RTF * log(Cll(c_no, ngh) / intra(c_no, 3));
+      double PrCl = cells_exchange_buffer[c_no][j];
+      double VCl = Sa_p * RTF * log(Cll(c_no, ngh) / intra(c_no, 3));
       JCl(c_no, ngh) = p[GCl] * PrCl * (intra(c_no, 6) + (VCl / Sa_p)) / CONST_F;
 
       // Tight Junctional Fluxes
-      tCalcs VtNa = Sa_p * RTF * log(Nal(c_no, ngh) / p[Nae]);
+      double VtNa = Sa_p * RTF * log(Nal(c_no, ngh) / p[Nae]);
       JtNa(c_no, ngh) = Sa_p * p[GtNa] * p[St] * (Vt - (VtNa / Sa_p)) / CONST_F;
 
-      tCalcs VtK = Sa_p * RTF * log(Kl(c_no, ngh) / p[Ke]);
+      double VtK = Sa_p * RTF * log(Kl(c_no, ngh) / p[Ke]);
       JtK(c_no, ngh) = Sa_p * p[GtK] * p[St] * (Vt - (VtK / Sa_p)) / CONST_F;
 
       // Luminal Osmolarity (Using electroneutrality principle)
-      tCalcs Il = 2.0 * Cll(c_no, ngh) + p[Ul];
+      double Il = 2.0 * Cll(c_no, ngh) + p[Ul];
 
       // Flow Rates
       // Apical Flow Rate
       Qa(c_no, ngh) = Sa_p * p[La] * (Il - Jb(c_no, Ii));
       // Tight Junctional Flow Rate
-      tCalcs Qt = Sa_p * p[Lt] * (Il - p[Ie]);
+      double Qt = Sa_p * p[Lt] * (Il - p[Ie]);
       // Total Fluid Flow Rate (into/out of lumen)
       Qtot(c_no, ngh) = Qa(c_no, ngh) + Qt;
     }
   }
 }
 
-void cLumen::var(MatrixX1C &x) {
+void cLumen::var(MatrixN1d &x) {
   // ordering of variables in the x vector is like:
   //    `INTRAVARS` intracellular vars for cell 1
   //    `INTRAVARS` intracellular vars for cell 2
@@ -637,7 +639,7 @@ void cLumen::var(MatrixX1C &x) {
   }
 }
 
-tCalcs cLumen::compute_flow_rate() {
+double cLumen::compute_flow_rate() {
   // set up variable arrays
   var(x_ion);
 
@@ -661,7 +663,7 @@ tCalcs cLumen::compute_flow_rate() {
   Array2Cells Qtot = Qa + Qt;
 
   // flow is sum of Qtot array
-  tCalcs flow_rate = Qtot.sum();
+  double flow_rate = Qtot.sum();
 
   return flow_rate;
 }

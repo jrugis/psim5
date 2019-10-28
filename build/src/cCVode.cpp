@@ -38,13 +38,13 @@ static int f(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
   cLumen* pt_cLumen = static_cast<cLumen *>(user_data);
   int nvars = pt_cLumen->get_nvars();
 
-  MatrixX1C ymat;
+  MatrixN1d ymat;
   ymat.resize(nvars, Eigen::NoChange);
   for (int i = 0; i < nvars; i++) {
     ymat(i) = NV_Ith_S(y, i);
   }
 
-  MatrixX1C ydotmat;
+  MatrixN1d ydotmat;
   ydotmat.resize(nvars, Eigen::NoChange);
   
   pt_cLumen->fluid_flow_function(t, ymat, ydotmat);
@@ -93,7 +93,7 @@ cCVode::~cCVode() {
   }
 }
 
-void cCVode::init(MatrixX1C& yini) {
+void cCVode::init(MatrixN1d& yini) {
   int retval;
   nvars = yini.rows();
   realtype t0 = 0.0;
@@ -142,7 +142,7 @@ void cCVode::init(MatrixX1C& yini) {
   initialised = true;
 }
 
-void cCVode::run(realtype t, realtype tout, MatrixX1C& yout) {
+void cCVode::run(realtype t, realtype tout, MatrixN1d& yout) {
   int retval;
 
   // reinit CVode

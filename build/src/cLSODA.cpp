@@ -13,17 +13,17 @@
  * f routine. Compute function f(t,y). 
  */
 
-static void f(tCalcs t, tCalcs* y, tCalcs* ydot, void *data) {
+static void f(double t, double* y, double* ydot, void *data) {
   cLumen* pt_cLumen = static_cast<cLumen *>(data);
   int ffvars = pt_cLumen->get_nvars();
 
-  MatrixX1C ymat;
+  MatrixN1d ymat;
   ymat.resize(ffvars, Eigen::NoChange);
   for (int i = 0; i < ffvars; i++) {
     ymat(i) = y[i];
   }
 
-  MatrixX1C ydotmat;
+  MatrixN1d ydotmat;
   ydotmat.resize(ffvars, Eigen::NoChange);
   
   pt_cLumen->fluid_flow_function(t, ymat, ydotmat);
@@ -39,7 +39,7 @@ static void f(tCalcs t, tCalcs* y, tCalcs* ydot, void *data) {
  *-------------------------------
  */
 
-cLSODA::cLSODA(cLumen* lumen_, std::ofstream& out_, tCalcs abstol_, tCalcs reltol_) :
+cLSODA::cLSODA(cLumen* lumen_, std::ofstream& out_, double abstol_, double reltol_) :
     lumen(lumen_), out(out_), nvars(0), abstol(abstol_), reltol(reltol_) {
   out << std::scientific;
   out << "<LSODA>: creating LSODA solver" << std::endl;
@@ -48,13 +48,13 @@ cLSODA::cLSODA(cLumen* lumen_, std::ofstream& out_, tCalcs abstol_, tCalcs relto
   out << std::fixed;
 }
 
-void cLSODA::init(MatrixX1C& y) {
+void cLSODA::init(MatrixN1d& y) {
   nvars = y.rows();
   yin.resize(nvars);
   yout.resize(nvars);
 }
 
-void cLSODA::run(tCalcs t, tCalcs tout, MatrixX1C& y) {
+void cLSODA::run(double t, double tout, MatrixN1d& y) {
   // transfer input values into required format
   for (int i = 0; i < nvars; i++) {
     yin[i] = y(i);

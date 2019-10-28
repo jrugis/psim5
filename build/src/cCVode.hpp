@@ -19,8 +19,8 @@ class cCVode {
   public:
     cCVode(cLumen* lumen_, std::ofstream& out_, realtype abstol_, realtype reltol_);
     ~cCVode();
-    void init(MatrixX1C& yini);
-    void run(realtype t, realtype tend, MatrixX1C& yout);
+    void init(MatrixN1d& yini);
+    void run(realtype t, realtype tend, MatrixN1d& yout);
 
   private:
     cLumen *lumen;

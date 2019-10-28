@@ -1,21 +1,22 @@
 /*
  * cAcinus.cpp
  *
- *  Created on: 28/04/2018
- *      Author: jrugis
+ *	Created on: 28/04/2018
+ *	Author: jrugis
  */
 
-#include <time.h>
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <time.h>
 
+#include "cAcinus.hpp"
 #include "global_defs.hpp"
 #include "utils.hpp"
-#include "cAcinus.hpp"
 #include "cLumen.hpp"
 
-cAcinus::cAcinus(std::string host_name, int rank, int c_rank, int c_count) {
+cAcinus::cAcinus(const std::string host_name, int rank, int c_rank, int c_count)
+{
   my_rank = rank;
   cell_rank = c_rank;
   cell_count = c_count;
@@ -39,57 +40,56 @@ cAcinus::~cAcinus() {
 }
 
 // NOTE: mpi send to all first, then receive from all
-void cAcinus::snd(tCalcs t, tCalcs dt) {
+void cAcinus::snd(double t, double dt) {
   float msg[ACCOUNT]; 
 
   out << "<Acinus> t: " << t << std::endl;
   msg[dTime] = dt;
   msg[cTime] = t;
   msg[sError] = 0.0;
-  for(int n = cell_rank; n < (cell_rank + cell_count); n++){
+  for (int n = cell_rank; n < (cell_rank + cell_count); n++) {
     MPI_CHECK(MPI_Send(&msg, ACCOUNT, MPI_FLOAT, n, ACINUS_CELL_TAG, MPI_COMM_WORLD));
   }
 }
 
-tCalcs cAcinus::recv() {
+double cAcinus::recv() {
   float msg[ACCOUNT];
   MPI_Status stat;
 
-  for(int n = cell_rank; n < (cell_rank + cell_count); n++){
+  for (int n = cell_rank; n < (cell_rank + cell_count); n++) {
     MPI_CHECK(MPI_Recv(&msg, ACCOUNT, MPI_FLOAT, n, ACINUS_CELL_TAG, MPI_COMM_WORLD, &stat));
   }
-  return(msg[sError]);
+  return (msg[sError]);
 }
 
-void cAcinus::run() {
-  tCalcs t = 0.0;
-  tCalcs solver_dt = p[delT];
-//  tCalcs prev_dt = solver_dt;
-  tCalcs error;
+void cAcinus::run()
+{
+  double t = 0.0;
+  double solver_dt = p[delT];
+//  double prev_dt = solver_dt;
+  double error;
   struct timespec start, end;
   double elapsed;
 
   // simulation time stepping and synchronization
   clock_gettime(CLOCK_REALTIME, &start);
-  while((p[totalT] - t) > 0.000001 ) {  // HARD CODED: assumes solver_dt always > 1us
-    snd(t, solver_dt);  // invoke the calcium solver
-    lumen->iterate(t, solver_dt);  // invoke the fluid flow solver
-    error = recv();  // wait for calcium solver to complete step
-    if(error != 0.0) { // change time step?
+  while ((p[totalT] - t) > 0.000001 ) { // HARD CODED: assumes solver_dt always > 1us
+    snd(t, solver_dt);                  // invoke the calcium solver
+    lumen->iterate(t, solver_dt);       // invoke the fluid flow solver
+    error = recv();                     // wait for calcium solver to complete step
+    if(error != 0.0) {                  // change time step?
       // ...
     } 
     clock_gettime(CLOCK_REALTIME, &end);
-	elapsed = (end.tv_sec - start.tv_sec) + ((end.tv_nsec - start.tv_nsec) / 1000000000.0);
-	out << std::fixed << std::setprecision(3);
-	out << "<Acinus> step duration: " << elapsed << "s"<< std::endl;
+    elapsed = (end.tv_sec - start.tv_sec) + ((end.tv_nsec - start.tv_nsec) / 1000000000.0);
+    out << std::fixed << std::setprecision(3);
+    out << "<Acinus> step duration: " << elapsed << "s" << std::endl;
     start = end;
     t += solver_dt;
-  }  
+  }
 
   // instruct cells to finish
   solver_dt = 0.0;
   snd(t, solver_dt);
   recv();
 }
-
-

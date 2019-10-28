@@ -1,26 +1,27 @@
 /*
  * cCell_calcium.cpp
  *
- *  Created on: 26/04/2018
- *      Author: jrugis
+ *	Created on: 26/04/2018
+ *	Author: jrugis
  */
 
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <iomanip>
-#include <fstream>
 #include <cmath>
+#include <cstddef>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <string>
 #include <sys/stat.h>
 #include <time.h>
 #include <vector>
 
-#include "global_defs.hpp"
-#include "utils.hpp"
 #include "cCellMesh.hpp"
 #include "cCell_calcium.hpp"
+#include "global_defs.hpp"
+#include "utils.hpp"
 
-cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank, int l_rank) {
+cCell_calcium::cCell_calcium(const std::string host_name, int my_rank, int a_rank, int l_rank)
+{
   cell_number = my_rank;
   acinus_rank = a_rank;
   lumen_rank = l_rank;
@@ -30,7 +31,8 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank, int
   out << "<Cell_x> id: " << id << std::endl;
   out << "<Cell_x> host_name: " << host_name << std::endl;
 
-  mesh = new cCellMesh(id, this);
+  utils::get_parameters(acinus_id, calciumParms, cell_number, p, out);
+  mesh = new cCellMesh(id, this); // only do this after getting the parameters!!!
   mesh->print_info();
 
   // common cells for exchanging ip3 preparation
@@ -38,56 +40,67 @@ cCell_calcium::cCell_calcium(std::string host_name, int my_rank, int a_rank, int
   int other_cell = -1;
   int face_count = 0;
   int start_index = 0;
-  for(int r = 0; r < mesh->common_triangles.rows(); r++) {
-    if(mesh->common_triangles(r, oCell) != other_cell) {
-      if(other_cell != -1) {
+  for (int r = 0; r < mesh->common_triangles.rows(); r++) {
+    if (mesh->common_triangles(r, oCell) != other_cell) {
+      if (other_cell != -1) {
         cells.push_back({other_cell, face_count, start_index});
         face_count = 0;
         start_index = r;
       }
       other_cell = mesh->common_triangles(r, oCell);
-      out << " " << other_cell + 1;  // cells are zero indexed
+      out << " " << other_cell + 1; // cells are zero indexed
     }
     face_count++;
   }
   cells.push_back({other_cell, face_count, start_index}); // one more time
   out << std::endl;
 
-  // allocate ip3 exchange arrays once to save time (could be allocated and freed as needed if memory usage becomes a bottleneck)
-  exchange_send_buffer = new tCalcs*[cells.size()];
-  exchange_recv_buffer = new tCalcs*[cells.size()];
+  // allocate exchange arrays once to save time (could be allocated and freed as needed if memory usage becomes a bottleneck)
+  exchange_send_buffer = new exchange_t*[cells.size()];
+  exchange_recv_buffer = new exchange_t*[cells.size()];
   for (std::vector<cfc>::size_type i = 0; i < cells.size(); i++) {
-    exchange_send_buffer[i] = new tCalcs[cells[i].fcount];
-    exchange_recv_buffer[i] = new tCalcs[cells[i].fcount];
+    exchange_send_buffer[i] = new exchange_t[cells[i].fcount];
+    exchange_recv_buffer[i] = new exchange_t[cells[i].fcount];
   }
-  exchange_load_ip.resize(mesh->vertices_count, Eigen::NoChange);
+  exchange_load_ip.resize(mesh->mesh_vals.vertices_count, Eigen::NoChange);
 
-  utils::get_parameters(acinus_id, calciumParms, cell_number, p, out);
-  make_matrices();  // create the constant matrices
-  init_solvec(); // initialise solution buffer
+  make_matrices(); // create the constant matrices
+  init_solvec();   // initialise solution buffer
   ca_file.open(id + "_ca.bin", std::ios::binary);
   ip3_file.open(id + "_ip3.bin", std::ios::binary);
   cer_file.open(id + "_cer.bin", std::ios::binary);
 
   // communicating with lumen (send info about connectivity, receive params)
   lumen_prep();
+
+  // set up MPI datatype
+  const int nitems = 2;
+  int blocklengths[nitems] = {1, 1};
+  MPI_Datatype types[nitems] = {MPI_INT, MPI_DOUBLE};
+  MPI_Aint offsets[nitems];
+  offsets[0] = offsetof(exchange_t, triangle);
+  offsets[1] = offsetof(exchange_t, value);
+  MPI_Type_create_struct(nitems, blocklengths, offsets, types, &mpi_exchange_type);
+  MPI_Type_commit(&mpi_exchange_type);
 }
 
-cCell_calcium::~cCell_calcium() {
+cCell_calcium::~cCell_calcium()
+{
   ca_file.close();
   ip3_file.close();
   cer_file.close();
   out.close();
   delete mesh;
   for (std::vector<cfc>::size_type i = 0; i < cells.size(); i++) {
-    delete [] exchange_send_buffer[i];
-    delete [] exchange_recv_buffer[i];
+    delete[] exchange_send_buffer[i];
+    delete[] exchange_recv_buffer[i];
   }
-  delete [] exchange_send_buffer;
-  delete [] exchange_recv_buffer;
+  delete[] exchange_send_buffer;
+  delete[] exchange_recv_buffer;
 }
 
-void cCell_calcium::lumen_prep() {
+void cCell_calcium::lumen_prep()
+{
   out << "<Cell_x> fluid flow preparation with Lumen..." << std::endl;
 
   // common apical cells for fluid flow calculation
@@ -127,7 +140,7 @@ void cCell_calcium::lumen_prep() {
   for (std::vector<cfc>::size_type i = 0; i < cells_apical.size(); i++) {
     int start_index = cells_apical[i].sindex;
     int num_tris = cells_apical[i].fcount;
-    tCalcs area = 0.0;
+    double area = 0.0;
     for (int j = 0; j < num_tris; j++) {
       int this_tri = mesh->common_apical_triangles(start_index + j, tTri);
       area += surface_data(this_tri, AREA_s);
@@ -140,59 +153,59 @@ void cCell_calcium::lumen_prep() {
   MPI_CHECK(MPI_Send(&surface_region_data[AREA_basal], 1, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
 }
 
-void cCell_calcium::init_solvec(){
+void cCell_calcium::init_solvec()
+{
   out << "<Cell_x> initialising solution vector..." << std::endl;
-  int np = mesh->vertices_count;
+  int np = mesh->mesh_vals.vertices_count;
 
   solvec.resize(DIFVARS * np, 1); // NOTE: the variable ordering is c, ip, ce
   prev_solvec.resize(DIFVARS * np, 1);
-  prev_solvec.block(0, 0, np, 1) = MatrixX1C().Constant(np, 1, p[c0]);
-  prev_solvec.block(np, 0, np, 1) = MatrixX1C().Constant(np, 1, p[ip0]);
-  prev_solvec.block(2 * np, 0, np, 1) = MatrixX1C().Constant(np, 1, p[ce0]);
+  prev_solvec.block(0, 0, np, 1) = MatrixN1d().Constant(np, 1, p[c0]);
+  prev_solvec.block(np, 0, np, 1) = MatrixN1d().Constant(np, 1, p[ip0]);
+  prev_solvec.block(2 * np, 0, np, 1) = MatrixN1d().Constant(np, 1, p[ce0]);
   solvec = prev_solvec;
 
   nd_solvec.resize(NONDIFVARS * np, 1); // NOTE: the variable ordering is g, h
   prev_nd_solvec.resize(NONDIFVARS * np, 1);
-  prev_nd_solvec.block(0, 0, np, 1) = MatrixX1C().Constant(np, 1, p[g0]);
-  prev_nd_solvec.block(np, 0, np, 1) = MatrixX1C().Constant(np, 1, 0.0); // default to 0.0
-  for(int n = 0; n < np; n++){
-    if(node_data(n, BOOL_apical) == 1.0){  // apical nodes only
+  prev_nd_solvec.block(0, 0, np, 1) = MatrixN1d().Constant(np, 1, p[g0]);
+  prev_nd_solvec.block(np, 0, np, 1) = MatrixN1d().Constant(np, 1, 0.0); // default to 0.0
+  for (int n = 0; n < np; n++) {
+    if (node_data(n, BOOL_apical) == 1.0) { // apical nodes only
       prev_nd_solvec(np + n) = p[h0];
     }
   }
   nd_solvec = prev_nd_solvec;
 }
 
-ArrayRefMass cCell_calcium::make_ref_mass(){
+ArrayRefMass cCell_calcium::make_ref_mass()
+{
   ArrayRefMass ref_mass;
-  tCalcs v = (1.0 / 6.0) * 0.25 * 0.25;
-  for(int i = 0; i < REF_MASS_SIZE; i++){
-    for(int j = 0; j < REF_MASS_SIZE; j++){
-      ref_mass(i, j) = v;
-    }
+  double v = (1.0 / 6.0) * 0.25 * 0.25;
+  for (int i = 0; i < REF_MASS_SIZE; i++) {
+    for (int j = 0; j < REF_MASS_SIZE; j++) { ref_mass(i, j) = v; }
   }
   return ref_mass;
 }
 
-void cCell_calcium::make_matrices(){
-
+void cCell_calcium::make_matrices()
+{
   out << "<Cell_x> id:" << id << " calculating the spatial factors..." << std::endl;
 
-  int nt = mesh->tetrahedrons_count;
+  int nt = mesh->mesh_vals.tetrahedrons_count;
   element_data.resize(nt, Eigen::NoChange);
-  int ns = mesh->surface_triangles_count;
+  int ns = mesh->mesh_vals.surface_triangles_count;
   surface_data.resize(ns, Eigen::NoChange);
-  int np = mesh->vertices_count;
+  int np = mesh->mesh_vals.vertices_count;
   node_data.resize(np, Eigen::NoChange);
 
   // make the reference mass matrix
   ArrayRefMass ref_mass;
   ref_mass = make_ref_mass();
 
-  // make the mass and stiffness matrices and the element constants matrix 
+  // make the mass and stiffness matrices and the element constants matrix
   out << "<Cell_x> calculating the constant matrices..." << std::endl;
-  MatrixXXC stiffc, stiffp, small_mass;
-  MatrixXXC stiffce;
+  MatrixNNd stiffc, stiffp, small_mass;
+  MatrixNNd stiffce;
   stiffc = stiffc.Zero(np, np);
   stiffp = stiffp.Zero(np, np);
   stiffce = stiffce.Zero(np, np);
@@ -201,45 +214,42 @@ void cCell_calcium::make_matrices(){
   // --------------------------------
   // for each volume element...
   // --------------------------------
-  for(int n = 0; n < (mesh->tetrahedrons_count); n++){ 
-    Eigen::Matrix<int,1,4> vi;      // tetrahedron vertex indices
-    vi = mesh->tetrahedrons.block<1,4>(n, 0);
+  for (int n = 0; n < (mesh->mesh_vals.tetrahedrons_count); n++) {
+    Eigen::Matrix<int, 1, 4> vi; // tetrahedron vertex indices
+    vi = mesh->mesh_vals.tetrahedrons.block<1, 4>(n, 0);
 
-    Eigen::Matrix<tCoord,4,3> vert; // tetrahedron vertex coordinates
-    for(int i = 0; i < 4; i++)
-      vert.block<1,3>(i, 0) = mesh->vertices.block<1,3>(int(vi(i)), 0); // why is typecast needed???
+    Eigen::Matrix<double, 4, 3> vert; // tetrahedron vertex coordinates
+    for (int i = 0; i < 4; i++)
+      vert.block<1, 3>(i, 0) = mesh->mesh_vals.vertices.block<1, 3>(int(vi(i)), 0); // why is typecast needed???
 
-    Eigen::Matrix<tCoord,3,3> J;    // tetrahedron edge vectors
-    for(int i = 0; i < 3; i++)
-      J.block<1,3>(i, 0) = vert.block<1,3>(i + 1, 0) - vert.block<1,3>(0, 0);
-    tCalcs V, Vx6;                  // tetrahedron volume, (6x) volume
-    Vx6 = J.determinant();
-    V = Vx6 / 6.0;
-    element_data(n, VOL_e) = V;   // save the tetrahedron volume
+    Eigen::Matrix<double, 3, 3> J; // tetrahedron edge vectors
+    for (int i = 0; i < 3; i++) J.row(i) = vert.row(i + 1) - vert.row(0);
+    double Vx6 = fabs(J.determinant()); // tetrahedron (6x) volume
+    double V = Vx6 / 6.0;
+    element_data(n, VOL_e) = V; // save the tetrahedron volume
 
     // RyR and PLC spatial factors per element
-    element_data(n, RYR_e) = 
-      ((mesh->dfa[n] < p[d_RyR]) ? mesh->dfa[n] : 1.0);
-    element_data(n, PLC_e) = (mesh->dfb[n] < p[PLCds] && mesh->dfa[n] > p[PLCdl]) ? 1.0 : 0.0;
+    element_data(n, RYR_e) = ((mesh->e_dfa[n] < p[d_RyR]) ? (mesh->e_dfa[n] / p[d_RyR]) : 1.0);
+    element_data(n, PLC_e) = (mesh->e_dfb[n] < p[PLCds] && mesh->e_dfa[n] > p[PLCdl]) ? 1.0 : 0.0;
 
-    tCalcs Ic = V * p[Dc]; // diffusion coefficients
-    tCalcs Ip = V * p[Dp];
-    tCalcs Ice = V * p[De];
+    double Ic = V * p[Dc]; // diffusion coefficients
+    double Ip = V * p[Dp];
+    double Ice = V * p[De];
 
-    Eigen::Matrix<tCoord,4,4> M, C, G;
+    Eigen::Matrix<double, 4, 4> M, C, G;
     M.col(0) << 1, 1, 1, 1;
-    M.block<4,3>(0, 1) = vert;
+    M.block<4, 3>(0, 1) = vert;
     C = M.inverse();
-    G = C.block<3,4>(1, 0).transpose() * C.block<3,4>(1, 0); // gradients of the basis functions
+    G = C.block<3, 4>(1, 0).transpose() * C.block<3, 4>(1, 0); // gradients of the basis functions
 
     // construct the mass and stiffness matrix components
-    for(int i = 0; i < 4; i++){
+    for (int i = 0; i < 4; i++) {
       stiffc(vi(i), vi(i)) += G(i, i) * Ic;
       stiffp(vi(i), vi(i)) += G(i, i) * Ip;
       stiffce(vi(i), vi(i)) += G(i, i) * Ice;
       small_mass(vi(i), vi(i)) += ref_mass(i, i) * Vx6;
     }
-    for(int i = 0; i < 3; i++){
+    for (int i = 0; i < 3; i++) {
       stiffc(vi(0), vi(i + 1)) += G(0, i + 1) * Ic;
       stiffp(vi(0), vi(i + 1)) += G(0, i + 1) * Ip;
       stiffce(vi(0), vi(i + 1)) += G(0, i + 1) * Ice;
@@ -249,7 +259,7 @@ void cCell_calcium::make_matrices(){
       stiffce(vi(i + 1), vi(0)) = stiffce(vi(0), vi(i + 1));
       small_mass(vi(i + 1), vi(0)) = small_mass(vi(0), vi(i + 1));
     }
-    for(int i = 0; i < 2; i++){
+    for (int i = 0; i < 2; i++) {
       stiffc(vi(1), vi(i + 2)) += G(1, i + 2) * Ic;
       stiffp(vi(1), vi(i + 2)) += G(1, i + 2) * Ip;
       stiffce(vi(1), vi(i + 2)) += G(1, i + 2) * Ice;
@@ -268,6 +278,7 @@ void cCell_calcium::make_matrices(){
     stiffce(vi(3), vi(2)) = stiffce(vi(2), vi(3));
     small_mass(vi(3), vi(2)) = small_mass(vi(2), vi(3));
   }
+  // utils::save_matrix("tet_vol_" + id + ".bin", element_data.col(VOL_e));
 
   // construct sparse mass matrix from a list of triplets (non zero elements)
   std::vector<Triplet> triplet_list;
@@ -290,17 +301,11 @@ void cCell_calcium::make_matrices(){
   for (int j = 0; j < np; j++) {
     for (int i = 0; i < np; i++) {
       double v_stiffc = stiffc(i, j); // first block
-      if (v_stiffc != 0) {
-        triplet_list.push_back(Triplet(i, j, v_stiffc));
-      }
+      if (v_stiffc != 0) { triplet_list.push_back(Triplet(i, j, v_stiffc)); }
       double v_stiffp = stiffp(i, j); // second block
-      if (v_stiffp != 0) {
-        triplet_list.push_back(Triplet(np + i, np + j, v_stiffp));
-      }
+      if (v_stiffp != 0) { triplet_list.push_back(Triplet(np + i, np + j, v_stiffp)); }
       double v_stiffce = stiffce(i, j); // third block
-      if (v_stiffce != 0) {
-        triplet_list.push_back(Triplet(np2 + i, np2 + j, v_stiffce));
-      }
+      if (v_stiffce != 0) { triplet_list.push_back(Triplet(np2 + i, np2 + j, v_stiffce)); }
     }
   }
   sparseStiff.resize(DIFVARS * np, DIFVARS * np);
@@ -312,27 +317,27 @@ void cCell_calcium::make_matrices(){
   // --------------------------------
   // for each surface triangle...
   // --------------------------------
-  for(int n = 0; n < ns; n++){ 
-    Eigen::Array<int,1,3> vi; // surface triangle vertex indices
-    vi = mesh->surface_triangles.block<1,3>(n, 0);
-    Eigen::Array<tCoord,3,3> vert; // triangle vertex coordinates
-    for(int i = 0; i < 3; i++)
-      vert.block<1,3>(i, 0) = mesh->vertices.block<1,3>(int(vi(i)), 0); // why is typecast needed???
-    Eigen::Matrix<tCoord,1,3> side1 = vert.block<1,3>(0, 0) - vert.block<1,3>(1, 0);
-    Eigen::Matrix<tCoord,1,3> side2 = vert.block<1,3>(0, 0) - vert.block<1,3>(2, 0);
-    tCalcs triangle_area = 0.5 * (side1.cross(side2)).norm();
+  for (int n = 0; n < ns; n++) {
+    Eigen::Array<int, 1, 3> vi; // surface triangle vertex indices
+    vi = mesh->mesh_vals.surface_triangles.block<1, 3>(n, 0);
+    Eigen::Array<double, 3, 3> vert; // triangle vertex coordinates
+    for (int i = 0; i < 3; i++)
+      vert.block<1, 3>(i, 0) = mesh->mesh_vals.vertices.block<1, 3>(int(vi(i)), 0); // why is typecast needed???
+    Eigen::Matrix<double, 1, 3> side1 = vert.block<1, 3>(0, 0) - vert.block<1, 3>(1, 0);
+    Eigen::Matrix<double, 1, 3> side2 = vert.block<1, 3>(0, 0) - vert.block<1, 3>(2, 0);
+    double triangle_area = 0.5 * (side1.cross(side2)).norm();
     surface_data(n, AREA_s) = triangle_area; // save the triangle area
   }
   // --------------------------------
   // for each node...
   // --------------------------------
-  for(int n = 0; n < np; n++){ 
-    node_data(n, BOOL_apical) = 0.0; // default 
+  for (int n = 0; n < np; n++) {
+    node_data(n, BOOL_apical) = 0.0; // default
   }
-  for(int n = 0; n < mesh->apical_triangles_count; n++){ // for each apical (surface) element...
-    Eigen::Array<int,1,3> vi; // apical triangle vertex indices
-    vi = mesh->surface_triangles.block<1,3>(mesh->apical_triangles(n), 0);
-    for(int i = 0; i < 3; i++){ // for each apical triangle vertex
+  for (int n = 0; n < mesh->apical_triangles_count; n++) { // for each apical (surface) element...
+    Eigen::Array<int, 1, 3> vi;                            // apical triangle vertex indices
+    vi = mesh->mesh_vals.surface_triangles.block<1, 3>(mesh->apical_triangles(n), 0);
+    for (int i = 0; i < 3; i++) {          // for each apical triangle vertex
       node_data(vi(i), BOOL_apical) = 1.0; // flag it as apical
     }
   }
@@ -354,19 +359,20 @@ void cCell_calcium::make_matrices(){
   // at rest volume
   // --------------------------------
   volume_at_rest = 0.0;
-  for (int n = 0; n < mesh->tetrahedrons_count; n++) {
+  for (int n = 0; n < mesh->mesh_vals.tetrahedrons_count; n++) {
     volume_at_rest += element_data(n, VOL_e);
   }
   out << "<Cell_x> volume at rest = " << volume_at_rest << std::endl;
 }
 
-Array1VC cCell_calcium::get_apical_reactions(tCalcs c, tCalcs ip, tCalcs ce, tCalcs h){
-  tCalcs phi_c = pow(c, 4) / (pow(p[K_c], 4) + pow(c, 4));
-  tCalcs phi_p = pow(ip, 2) / (pow(p[K_p], 2) + pow(ip, 2));
-  tCalcs h_alpha = pow(p[K_h], 4) / (pow(p[K_h], 4) + pow(c, 4));
-  tCalcs beta  = phi_c * phi_p * h;
-  tCalcs alpha = (1 - phi_p) * (1 - (phi_c * h_alpha));
-  tCalcs po = beta / (beta + p[k_beta] * (beta + alpha));
+Array1VC cCell_calcium::get_apical_reactions(double c, double ip, double ce, double h)
+{
+  double phi_c = pow(c, 4) / (pow(p[K_c], 4) + pow(c, 4));
+  double phi_p = pow(ip, 2) / (pow(p[K_p], 2) + pow(ip, 2));
+  double h_alpha = pow(p[K_h], 4) / (pow(p[K_h], 4) + pow(c, 4));
+  double beta = phi_c * phi_p * h;
+  double alpha = (1 - phi_p) * (1 - (phi_c * h_alpha));
+  double po = beta / (beta + p[k_beta] * (beta + alpha));
 
   Array1VC reactions;
   reactions(0) = p[kIPR] * po * (ce - c);
@@ -375,25 +381,26 @@ Array1VC cCell_calcium::get_apical_reactions(tCalcs c, tCalcs ip, tCalcs ce, tCa
   return reactions;
 }
 
-tCalcs cCell_calcium::get_g_reaction(tCalcs c, tCalcs g){ // RYR dynamics
-  tCalcs ginf = pow(p[K_hRyR], 2) / (pow(p[K_hRyR], 2) + pow(c, 2));
+double cCell_calcium::get_g_reaction(double c, double g)
+{ // RYR dynamics
+  double ginf = pow(p[K_hRyR], 2) / (pow(p[K_hRyR], 2) + pow(c, 2));
   return (ginf - g) / p[tau];
 }
 
-tCalcs cCell_calcium::get_h_reaction(tCalcs c, tCalcs h){ // IPR dynamics
-  tCalcs hinf = pow(p[K_h], 4) / (pow(p[K_h], 4) + pow(c, 4));
-  tCalcs htau = p[tau_max] * pow(p[K_tau], 4) / (pow(p[K_tau], 4) + pow(c, 4));
+double cCell_calcium::get_h_reaction(double c, double h)
+{ // IPR dynamics
+  double hinf = pow(p[K_h], 4) / (pow(p[K_h], 4) + pow(c, 4));
+  double htau = p[tau_max] * pow(p[K_tau], 4) / (pow(p[K_tau], 4) + pow(c, 4));
   return (hinf - h) / htau;
 }
 
-Array1VC cCell_calcium::get_body_reactions(tCalcs c, tCalcs ip, tCalcs ce, tCalcs g, tCalcs ryr_f, tCalcs plc_f){
-  tCalcs J_SERCA = p[V_p] * 
-                   (pow(c, 2) - p[K_bar] * pow(ce, 2)) / (pow(p[k_p], 2) + pow(c, 2));
-  tCalcs J_RYR   = ryr_f * p[V_RyR] * 
-                   ( pow(c, p[n_RyR]) / (pow(c, p[n_RyR]) + pow(p[K_RyR], p[n_RyR]))) *
-                   ( pow(ce, p[m_RyR]) / (pow(ce, p[m_RyR]) + pow(p[K_RyR2], p[m_RyR]))) * g;
-  tCalcs vplc   = plc_f * p[V_PLC] * pow(c, 2) / (pow(p[K_PLC], 2) + pow(c, 2));
-  tCalcs vdeg   = (p[V_5K] + (p[V_3K] * pow(c, 2))/(pow(p[K3K], 2) + pow(c, 2))) * ip;
+Array1VC cCell_calcium::get_body_reactions(double c, double ip, double ce, double g, double ryr_f, double plc_f)
+{
+  double J_SERCA = p[V_p] * (pow(c, 2) - p[K_bar] * pow(ce, 2)) / (pow(p[k_p], 2) + pow(c, 2));
+  double J_RYR = ryr_f * p[V_RyR] * (pow(c, p[n_RyR]) / (pow(c, p[n_RyR]) + pow(p[K_RyR], p[n_RyR]))) *
+                 (pow(ce, p[m_RyR]) / (pow(ce, p[m_RyR]) + pow(p[K_RyR2], p[m_RyR]))) * g;
+  double vplc = plc_f * p[V_PLC] * pow(c, 2) / (pow(p[K_PLC], 2) + pow(c, 2));
+  double vdeg = (p[V_5K] + (p[V_3K] * pow(c, 2)) / (pow(p[K3K], 2) + pow(c, 2))) * ip;
 
   Array1VC reactions;
   reactions(0) = (J_RYR * (ce - c)) - J_SERCA;
@@ -406,13 +413,14 @@ Array1VC cCell_calcium::get_body_reactions(tCalcs c, tCalcs ip, tCalcs ce, tCalc
   return reactions;
 }
 
-MatrixX1C cCell_calcium::make_load(tCalcs dt, bool plc){
-  int np = mesh->vertices_count;
+MatrixN1d cCell_calcium::make_load(double dt, bool plc)
+{
+  int np = mesh->mesh_vals.vertices_count;
   ArrayX1C c, ip, g, h;
   ArrayX1C load_c, load_ip;
   ArrayX1C ce;
   ArrayX1C load_ce;
-  MatrixX1C load;
+  MatrixN1d load;
 
   c = prev_solvec.block(0, 0, np, 1);
   ip = prev_solvec.block(np, 0, np, 1);
@@ -426,19 +434,19 @@ MatrixX1C cCell_calcium::make_load(tCalcs dt, bool plc){
   load.resize(DIFVARS * np, Eigen::NoChange);
 
   // volume reaction terms
-  for(int n = 0; n < (mesh->tetrahedrons_count); n++){ // for each volume element...
-    Eigen::Array<int,1,4> vi;      // tetrahedron vertex indices
-    vi = mesh->tetrahedrons.block<1,4>(n, 0);
+  for (int n = 0; n < (mesh->mesh_vals.tetrahedrons_count); n++) { // for each volume element...
+    Eigen::Array<int, 1, 4> vi;                                    // tetrahedron vertex indices
+    vi = mesh->mesh_vals.tetrahedrons.block<1, 4>(n, 0);
 
-    tCalcs cav  = 0.25 * (c(vi(0))  + c(vi(1))  + c(vi(2))  + c(vi(3)));
-    tCalcs ipav = 0.25 * (ip(vi(0)) + ip(vi(1)) + ip(vi(2)) + ip(vi(3)));
-    tCalcs ceav = 0.25 * (ce(vi(0)) + ce(vi(1)) + ce(vi(2)) + ce(vi(3)));
-    tCalcs gav = 0.25 * (g(vi(0)) + g(vi(1)) + g(vi(2)) + g(vi(3)));
+    double cav = 0.25 * (c(vi(0)) + c(vi(1)) + c(vi(2)) + c(vi(3)));
+    double ipav = 0.25 * (ip(vi(0)) + ip(vi(1)) + ip(vi(2)) + ip(vi(3)));
+    double ceav = 0.25 * (ce(vi(0)) + ce(vi(1)) + ce(vi(2)) + ce(vi(3)));
+    double gav = 0.25 * (g(vi(0)) + g(vi(1)) + g(vi(2)) + g(vi(3)));
 
-    Array1VC reactions = get_body_reactions(cav, ipav, ceav, gav,
-        tCalcs(element_data(n, RYR_e)), tCalcs(plc ? element_data(n, PLC_e) : 0.0));
+    Array1VC reactions =
+      get_body_reactions(cav, ipav, ceav, gav, double(element_data(n, RYR_e)), double(plc ? element_data(n, PLC_e) : 0.0));
 
-    for(int i = 0; i < 4; i++){ // for each tetrahedron vertex
+    for (int i = 0; i < 4; i++) {                                    // for each tetrahedron vertex
       // reaction terms, scaled by 1/4 volume
       load_c(vi(i)) += element_data(n, VOL_e) * 0.25 * (reactions(0) - cell_volume_term * c(vi(i)));
       load_ip(vi(i)) += element_data(n, VOL_e) * 0.25 * (reactions(1) - cell_volume_term * ip(vi(i)));
@@ -447,18 +455,18 @@ MatrixX1C cCell_calcium::make_load(tCalcs dt, bool plc){
   }
 
   // apical (surface) reaction terms
-  for(int n = 0; n < (mesh->apical_triangles_count); n++){ // for each apical (surface) triangle...
-    Eigen::Array<int,1,3> vi; // apical triangle vertex indices
-    vi = mesh->surface_triangles.block<1,3>(mesh->apical_triangles(n), 0);
+  for (int n = 0; n < (mesh->apical_triangles_count); n++) { // for each apical (surface) triangle...
+    Eigen::Array<int, 1, 3> vi;                              // apical triangle vertex indices
+    vi = mesh->mesh_vals.surface_triangles.block<1, 3>(mesh->apical_triangles(n), 0);
 
-    tCalcs cav  = (c(vi(0)) + c(vi(1)) + c(vi(2))) / 3.0;
-    tCalcs ipav  = (ip(vi(0)) + ip(vi(1)) + ip(vi(2))) / 3.0;
-    tCalcs ceav  = (ce(vi(0)) + ce(vi(1)) + ce(vi(2))) / 3.0;
-    tCalcs hav  = (h(vi(0)) + h(vi(1)) + h(vi(2))) / 3.0;
+    double cav = (c(vi(0)) + c(vi(1)) + c(vi(2))) / 3.0;
+    double ipav = (ip(vi(0)) + ip(vi(1)) + ip(vi(2))) / 3.0;
+    double ceav = (ce(vi(0)) + ce(vi(1)) + ce(vi(2))) / 3.0;
+    double hav = (h(vi(0)) + h(vi(1)) + h(vi(2))) / 3.0;
 
     Array1VC reactions = get_apical_reactions(cav, ipav, ceav, hav);
-    for(int i = 0; i < 3; i++){ // for each apical triangle vertex
-      load_c(vi(i)) += // reaction term scaled by 1/3 area
+    for (int i = 0; i < 3; i++) { // for each apical triangle vertex
+      load_c(vi(i)) +=            // reaction term scaled by 1/3 area
         (surface_data(mesh->apical_triangles(n), AREA_s) / 3.0) * reactions(0);
       load_ce(vi(i)) += // reaction term scaled by 1/3 area
         (surface_data(mesh->apical_triangles(n), AREA_s) / 3.0) * reactions(2);
@@ -473,28 +481,31 @@ MatrixX1C cCell_calcium::make_load(tCalcs dt, bool plc){
   return load;
 }
 
-MatrixX1C cCell_calcium::solve_nd(tCalcs dt){ // the non-diffusing variables
-  int np = mesh->vertices_count;
+MatrixN1d cCell_calcium::solve_nd(double dt)
+{ // the non-diffusing variables
+  int np = mesh->mesh_vals.vertices_count;
   ArrayX1C c, g, h;
-  MatrixX1C svec;
+  MatrixN1d svec;
 
   c = prev_solvec.block(0, 0, np, 1);
   g = prev_nd_solvec.block(0, 0, np, 1);
   h = prev_nd_solvec.block(np, 0, np, 1); // note: only apical (surface) nodes used
   svec.resize(NONDIFVARS * np, Eigen::NoChange);
 
-  for(int n = 0; n < np; n++){ // for each node...
-    svec(n) = g(n) + (dt * get_g_reaction(c(n), g(n))); // g
-    if(node_data(n, BOOL_apical) == 1.0){ // only the apical nodes
+  for (int n = 0; n < np; n++) {                               // for each node...
+    svec(n) = g(n) + (dt * get_g_reaction(c(n), g(n)));        // g
+    if (node_data(n, BOOL_apical) == 1.0) {                    // only the apical nodes
       svec(np + n) = h(n) + (dt * get_h_reaction(c(n), h(n))); // h
     }
   }
   return svec;
 }
 
-void cCell_calcium::compute_exchange_values(int cell) {
-  int np = mesh->vertices_count;
-  tCalcs* buffer = exchange_send_buffer[cell];
+void cCell_calcium::compute_exchange_values(int cell)
+{
+  int np = mesh->mesh_vals.vertices_count;
+  // pointer to the buffer for storing value to send to this cell
+  exchange_t* buffer = exchange_send_buffer[cell];
 
   // loop over the common triangles of this cell
   int start_index = cells[cell].sindex;
@@ -504,42 +515,59 @@ void cCell_calcium::compute_exchange_values(int cell) {
     int this_triangle = mesh->common_triangles(index, tTri);
 
     // sending the average ip3 of this triangle's vertices
-    tCalcs exchange_value = 0.0;
+    double exchange_value = 0.0;
     for (int j = 0; j < 3; j++) {
-      int vertex_index = mesh->surface_triangles(this_triangle, j);
+      int vertex_index = mesh->mesh_vals.surface_triangles(this_triangle, j);
       exchange_value += solvec(np + vertex_index);
     }
-    buffer[i] = exchange_value * third;
+    buffer[i].triangle = mesh->common_triangles(index, oTri);
+    buffer[i].value = exchange_value * third;
   }
 }
 
-void cCell_calcium::compute_exchange_load(int cell) {
+void cCell_calcium::compute_exchange_load(int cell)
+{
+  int np = mesh->mesh_vals.vertices_count;
   int num_common_triangles = cells[cell].fcount;
-  tCalcs* sendbuf = exchange_send_buffer[cell];
-  tCalcs* recvbuf = exchange_recv_buffer[cell];
+  exchange_t* recvbuf = exchange_recv_buffer[cell];
 
   // loop over common triangles and compute ip3 fluxes across them
   for (int i = 0; i < num_common_triangles; i++) {
     // we are assuming the ordering of common triangles between two cells is the same in both cells
-    int this_tri = mesh->common_triangles(cells[cell].sindex + i, tTri);
+    int this_tri = recvbuf[i].triangle;
 
-    // flux across this triangle
-    tCalcs exchange_value = recvbuf[i] - sendbuf[i];
-    exchange_value *= p[Fip];
-    exchange_value *= surface_data(this_tri, AREA_s);
+    // we need the average IP3 of this triangle's vertices
+    // NOTE: this was computed in compute_exchange_values and stored in
+    // exchange_send_buffer[cell] but that array is indexed by common
+    // triangles and this_tri is the index in surface triangles. The choice is
+    // either to recompute the average here or create another array, of length
+    // surface_triangles_count, and store the value in there during compute_exchange_values
+    // and look it up here...
+    double this_tri_ip = 0.0;
+    for (int j = 0; j < 3; j++) {
+      int vertex_index = mesh->mesh_vals.surface_triangles(this_tri, j);
+      this_tri_ip += solvec(np + vertex_index);
+    }
+    this_tri_ip *= third;
+
+    // flux across this triangle - recvbuf holds the average IP3 at this triangle
+    // in the other cell
+    double this_tri_flux = recvbuf[i].value - this_tri_ip;
+    this_tri_flux *= p[Fip];
+    this_tri_flux *= surface_data(this_tri, AREA_s);
 
     // converting from triangle back to vertices
-    exchange_value *= third;
+    this_tri_flux *= third;
     for (int j = 0; j < 3; j++) {
-      int vertex_index = mesh->surface_triangles(this_tri, j);
-      exchange_load_ip(vertex_index) += exchange_value;
+      int vertex_index = mesh->mesh_vals.surface_triangles(this_tri, j);
+      exchange_load_ip(vertex_index) += this_tri_flux;
     }
   }
 }
 
-void cCell_calcium::exchange() {
+void cCell_calcium::exchange()
+{
   // this assumes the ordering of common triangles between two cells is the same from both cells
-
   exchange_load_ip.setZero();
 
   int num_connected_cells = cells.size();
@@ -549,13 +577,13 @@ void cCell_calcium::exchange() {
   for (int i = 0; i < num_connected_cells; i++) {
     int dest = cells[i].cell + 1;
     int mlength = cells[i].fcount;
-    tCalcs* msg = exchange_send_buffer[i];
+    exchange_t* msg = exchange_send_buffer[i];
 
     // fill msg with values for each common triangle with this cell
     compute_exchange_values(i);
 
-    // communicate
-    MPI_CHECK(MPI_Isend(msg, mlength, MPI_DOUBLE, dest, CELL_CELL_TAG, MPI_COMM_WORLD, &send_requests[i]));
+    // communicate (non-blocking so can process incoming messages immediately)
+    MPI_CHECK(MPI_Isend(msg, mlength, mpi_exchange_type, dest, CELL_CELL_TAG, MPI_COMM_WORLD, &send_requests[i]));
   }
 
   // receive common triangle values back from other cells (non-blocking)
@@ -563,8 +591,8 @@ void cCell_calcium::exchange() {
   for (int i = 0; i < num_connected_cells; i++) {
     int source = cells[i].cell + 1;
     int mlength = cells[i].fcount;
-    tCalcs* msg = exchange_recv_buffer[i];
-    MPI_CHECK(MPI_Irecv(msg, mlength, MPI_DOUBLE, source, CELL_CELL_TAG, MPI_COMM_WORLD, &recv_requests[i]));
+    exchange_t* msg = exchange_recv_buffer[i];
+    MPI_CHECK(MPI_Irecv(msg, mlength, mpi_exchange_type, source, CELL_CELL_TAG, MPI_COMM_WORLD, &recv_requests[i]));
   }
 
   // process receive messages as they come in
@@ -582,7 +610,7 @@ void cCell_calcium::exchange() {
 
 void cCell_calcium::lumen_exchange() {
   int num_apical_connected_cells = cells_apical.size();
-  std::vector<tCalcs> exchange_values(num_apical_connected_cells + 1);
+  std::vector<double> exchange_values(num_apical_connected_cells + 1);
 
   // % Ca2+ Activated K+ Channels open probability
   // PK = sum((1./(1+(par.KCaKC./(Ca{2}{cell_no})).^par.eta2)).*par.Sb_k{cell_no})./par.Sb{cell_no};
@@ -590,15 +618,15 @@ void cCell_calcium::lumen_exchange() {
   //   Ca{2}{cell_no} is array of average Ca values of basal triangles in this cell
   //   par.Sb_k{cell_no} is array of surface areas of basal triangles in this cell
   //   par.Sb{cell_no} is total surface area of basal triangles in this cell
-  tCalcs PK = 0.0;
+  double PK = 0.0;
   for (int i = 0; i < mesh->basal_triangles_count; i++) {
     int this_tri = mesh->basal_triangles(i);
-    tCalcs area_tri = surface_data(this_tri, AREA_s);
+    double area_tri = surface_data(this_tri, AREA_s);
 
     // average Ca at this triangle
-    tCalcs ca_tri = 0.0;
+    double ca_tri = 0.0;
     for (int j = 0; j < 3; j++) {
-      int vertex_index = mesh->surface_triangles(this_tri, j);
+      int vertex_index = mesh->mesh_vals.surface_triangles(this_tri, j);
       ca_tri += solvec(vertex_index);  // Ca is first
     }
     ca_tri *= third;
@@ -619,15 +647,15 @@ void cCell_calcium::lumen_exchange() {
     int n_tri = cells_apical[i].fcount;
     int s_ind = cells_apical[i].sindex;
 
-    tCalcs PrCl = 0.0;
+    double PrCl = 0.0;
     for (int j = 0; j < n_tri; j++) {
       int this_tri = mesh->common_apical_triangles(s_ind + j, tTri);
-      tCalcs area_tri = surface_data(this_tri, AREA_s);
+      double area_tri = surface_data(this_tri, AREA_s);
 
       // average Ca at this triangle
-      tCalcs ca_tri = 0.0;
+      double ca_tri = 0.0;
       for (int k = 0; k < 3; k++) {
-        int vertex_index = mesh->surface_triangles(this_tri, k);
+        int vertex_index = mesh->mesh_vals.surface_triangles(this_tri, k);
         ca_tri += solvec(vertex_index);  // Ca is first
       }
       ca_tri *= third;
@@ -651,30 +679,31 @@ void cCell_calcium::lumen_exchange() {
   volume_scaling = volume_at_rest / cell_volume_terms[0];
 }
 
-void cCell_calcium::run() {
+void cCell_calcium::run()
+{
   float msg[ACCOUNT]; // mpi message from and back to acinus
-  tCalcs delta_time, current_time;
-  tCalcs prev_delta_time = 0.0;
+  double delta_time, current_time;
+  double prev_delta_time = 0.0;
   MPI_Status stat;
   struct timespec start, end;
   double elapsed;
-  int np = mesh->vertices_count;
+  int np = mesh->mesh_vals.vertices_count;
 
-  MatrixX1C rhs; // the right-hand-side vector
+  MatrixN1d rhs; // the right-hand-side vector
   rhs.resize(DIFVARS * np, Eigen::NoChange);
   bool plc;
 
   int step = 0;
-  while(true) {
+  while (true) {
     step++;
     prev_solvec = solvec;       // c, ip, ce
-	prev_nd_solvec = nd_solvec; // g, h
+    prev_nd_solvec = nd_solvec; // g, h
 
     // get current time and time step value from acinus
     MPI_CHECK(MPI_Recv(&msg, ACCOUNT, MPI_FLOAT, acinus_rank, ACINUS_CELL_TAG, MPI_COMM_WORLD, &stat));
     delta_time = msg[dTime];
     current_time = msg[cTime];
-    if(delta_time == 0.0) { // done?
+    if (delta_time == 0.0) { // done?
       MPI_CHECK(MPI_Send(&msg, ACCOUNT, MPI_FLOAT, acinus_rank, ACINUS_CELL_TAG, MPI_COMM_WORLD));
       break;
     }
@@ -688,10 +717,10 @@ void cCell_calcium::run() {
     // Lumen exchange (send Ca info for fx_ap and fx_ba, receive back volume)
     lumen_exchange();
 
-    if(delta_time != prev_delta_time) { // recalculate A matrix if time step changed
+    if (delta_time != prev_delta_time) { // recalculate A matrix if time step changed
       sparseA = sparseMass + (delta_time * sparseStiff);
-	  solver.compute(sparseA);
-      if(solver.info() != Eigen::Success) { // decomposition failed?
+      solver.compute(sparseA);
+      if (solver.info() != Eigen::Success) { // decomposition failed?
         utils::fatal_error("matrix decomposition failed", out);
       }
       prev_delta_time = delta_time;
@@ -703,14 +732,15 @@ void cCell_calcium::run() {
     // calculate solution for diffusing variables
     rhs = (sparseMass * prev_solvec) + (delta_time * make_load(delta_time, plc));
     clock_gettime(CLOCK_REALTIME, &start);
-    solvec = solver.solve(rhs);                   // Eigen solver
-    if(solver.info() != Eigen::Success) {
-      utils::fatal_error("solver failed", out);;
-	}
+    solvec = solver.solve(rhs); // Eigen solver
+    if (solver.info() != Eigen::Success) {
+      utils::fatal_error("solver failed", out);
+      ;
+    }
     clock_gettime(CLOCK_REALTIME, &end);
-	elapsed = (end.tv_sec - start.tv_sec) + ((end.tv_nsec - start.tv_nsec) / 1000000000.0);
-	out << std::fixed << std::setprecision(6);
-	out << "<Cell_x> solver duration: " << elapsed << "s"<< std::endl;
+    elapsed = (end.tv_sec - start.tv_sec) + ((end.tv_nsec - start.tv_nsec) / 1000000000.0);
+    out << std::fixed << std::setprecision(3);
+    out << "<Cell_x> solver duration: " << elapsed << "s" << std::endl;
 
     // check solver error and send it to acinus
     // ...
@@ -721,19 +751,19 @@ void cCell_calcium::run() {
     nd_solvec = solve_nd(delta_time);
 
     // save results
-    if(step % int(p[Tstride]) == 0) {
-      save_results(ca_file, 0);   // 0 = calcium
-      save_results(ip3_file, 1);  // 1 = ip3
-      save_results(cer_file, 2);  // 2 = cer
+    if (step % int(p[Tstride]) == 0) {
+      save_results(ca_file, 0);  // 0 = calcium
+      save_results(ip3_file, 1); // 1 = ip3
+      save_results(cer_file, 2); // 2 = cer
     }
   }
 }
 
-void cCell_calcium::save_results(std::ofstream &data_file, int var){
-  int np = mesh->vertices_count;
+void cCell_calcium::save_results(std::ofstream& data_file, int var)
+{
+  int np = mesh->mesh_vals.vertices_count;
   float* fbuf = new float[np];
-  for(int n=0; n<np; n++) fbuf[n] = solvec[var*np + n]; // convert to float for reduced file size
+  for (int n = 0; n < np; n++) fbuf[n] = solvec[var * np + n]; // convert to float for reduced file size
   data_file.write(reinterpret_cast<char*>(fbuf), np * sizeof(float));
   delete [] fbuf;
 }
-

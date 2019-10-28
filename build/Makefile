@@ -33,7 +33,7 @@ CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -march=native -mtune=native -W
 CPP_LIBS = -lsundials_cvode -lsundials_nvecserial
 
 EXE = ../run/psim5
-OBJS = main.o utils.o cAcinus.o cCell_calcium.o cCellMesh.o cLumen.o LSODA.o cLSODA.o cCVode.o
+OBJS = main.o utils.o cAcinus.o cLumenTree.o cCell_calcium.o cCellMesh.o cLumen.o LSODA.o cLSODA.o cCVode.o
 SRC = ./src
 
 all: $(EXE)
@@ -54,6 +54,9 @@ cAcinus.o: $(SRC)/cAcinus.cpp $(SRC)/cAcinus.hpp $(SRC)/utils.hpp $(SRC)/global_
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
 cLumen.o: $(SRC)/cLumen.cpp $(SRC)/cLumen.hpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp $(SRC)/cCVode.hpp $(SRC)/cLSODA.hpp
+	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
+
+cLumenTree.o: $(SRC)/cLumenTree.cpp $(SRC)/cLumenTree.hpp $(SRC)/utils.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
 cCVode.o: $(SRC)/cCVode.cpp $(SRC)/cCVode.hpp $(SRC)/global_defs.hpp $(SRC)/utils.hpp $(SRC)/cLumen.hpp
