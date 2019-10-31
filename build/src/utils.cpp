@@ -117,76 +117,28 @@ void utils::read_mesh(const std::string file_name, sMeshVals& mesh_vals, std::of
 {
   std::ifstream cell_file(file_name + ".bmsh", std::ios::in | std::ios::binary); // open the mesh file
   if (not cell_file.is_open()) { fatal_error("mesh file " + file_name + " could not be opened", out); }
-  uint32_t i32;
-  double f64;
 
-  // get the mesh vertices (int32 count, 3x-float32 vertices)
-  cell_file.read(reinterpret_cast<char*>(&i32), sizeof(i32));
-  mesh_vals.vertices_count = i32;
+  // get the mesh vertices (int count, 3x-double vertices)
+  cell_file.read(reinterpret_cast<char*>(&(mesh_vals.vertices_count)), sizeof(int));
   mesh_vals.vertices.resize(mesh_vals.vertices_count, Eigen::NoChange);
-  for (int n = 0; n < mesh_vals.vertices_count; n++) {
-    for (int m = 0; m < 3; m++) {
-      cell_file.read(reinterpret_cast<char*>(&f64), sizeof(f64));
-      mesh_vals.vertices(n, m) = f64;
-    }
-  }
-  // get the surface triangles (int32 count, 3x-int32 vertex indices)
-  cell_file.read(reinterpret_cast<char*>(&i32), sizeof(i32));
-  mesh_vals.surface_triangles_count = i32;
+  cell_file.read(reinterpret_cast<char*>(mesh_vals.vertices.data()), 3 * mesh_vals.vertices_count * sizeof(double));
+  
+  // get the surface triangles (int count, 3x-int vertex indices)
+  cell_file.read(reinterpret_cast<char*>(&(mesh_vals.surface_triangles_count)), sizeof(int));
   mesh_vals.surface_triangles.resize(mesh_vals.surface_triangles_count, Eigen::NoChange);
-  for (int n = 0; n < mesh_vals.surface_triangles_count; n++) {
-    for (int m = 0; m < 3; m++) {
-      cell_file.read(reinterpret_cast<char*>(&i32), sizeof(i32));
-      mesh_vals.surface_triangles(n, m) = i32; // NOTE: zero indexed
-    }
-  }
-  // get the element tetrahedrons (int32 count, 4x-int32 vertex indices)
-  cell_file.read(reinterpret_cast<char*>(&i32), sizeof(i32));
-  mesh_vals.tetrahedrons_count = i32;
+  cell_file.read(reinterpret_cast<char*>(mesh_vals.surface_triangles.data()), 3 * mesh_vals.surface_triangles_count * sizeof(int));
+
+  // get the element tetrahedrons (int count, 4x-int vertex indices)
+  cell_file.read(reinterpret_cast<char*>(&(mesh_vals.tetrahedrons_count)), sizeof(int));
   mesh_vals.tetrahedrons.resize(mesh_vals.tetrahedrons_count, Eigen::NoChange);
-  for (int n = 0; n < mesh_vals.tetrahedrons_count; n++) {
-    for (int m = 0; m < 4; m++) {
-      cell_file.read(reinterpret_cast<char*>(&i32), sizeof(i32));
-      mesh_vals.tetrahedrons(n, m) = i32; // NOTE: zero indexed
-    }
-  }
+  cell_file.read(reinterpret_cast<char*>(mesh_vals.tetrahedrons.data()), 4 * mesh_vals.tetrahedrons_count * sizeof(int));
+
   cell_file.close();
 }
 
-void utils::save_matrix(const std::string file_name, const MatrixNNd& mat)
-{
-  int rows = mat.rows();
-  int cols = mat.cols();
-  int rc = rows * cols;
-  double* buf = new double[rc]; // temporary buffer
-  int n = 0;
-  for (int r = 0; r < rows; r++) {
-    for (int c = 0; c < cols; c++) {
-      buf[n++] = mat(r, c); // flatten the data
-    }
-  }
+void utils::save_matrix(const std::string file_name, int bytes, char* data){
   std::ofstream data_file;
   data_file.open(file_name, std::ios::binary);
-  data_file.write(reinterpret_cast<char*>(buf), rc * sizeof(double));
+  data_file.write(data, bytes);
   data_file.close();
-  delete (buf);
-}
-
-void utils::save_integer_matrix(const std::string file_name, const MatrixNNi& mat)
-{
-  int rows = mat.rows();
-  int cols = mat.cols();
-  int rc = rows * cols;
-  int* buf = new int[rc]; // temporary buffer
-  int n = 0;
-  for (int r = 0; r < rows; r++) {
-    for (int c = 0; c < cols; c++) {
-      buf[n++] = mat(r, c); // flatten the data
-    }
-  }
-  std::ofstream data_file;
-  data_file.open(file_name, std::ios::binary);
-  data_file.write(reinterpret_cast<char*>(buf), rc * sizeof(int));
-  data_file.close();
-  delete (buf);
 }

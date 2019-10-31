@@ -168,14 +168,22 @@ void cCellMesh::print_info()
   parent->out << "<CellMesh> common_triangles_count: " << common_triangles_count << std::endl;
 
   // ***********************************************************
-  // utils::save_matrix("vertices_" + id + ".bin", mesh_vals.vertices);
-  // utils::save_integer_matrix("triangles_" + id + ".bin", mesh_vals.surface_triangles);
-  // utils::save_integer_matrix("tetrahedrons_" + id + ".bin", mesh_vals.tetrahedrons);
-  utils::save_integer_matrix("apical_" + id + ".bin", apical_triangles);
-  // utils::save_matrix("n_dfa_" + id + ".bin", n_dfa);
-  // utils::save_matrix("e_dfa_" + id + ".bin", e_dfa);
-  // utils::save_integer_matrix("common_" + id + ".bin", common_triangles);
-  utils::save_integer_matrix("basal_" + id + ".bin", basal_triangles);
-  // utils::save_matrix("e_dfb_" + id + ".bin", e_dfb);
+  //utils::save_matrix("vertices_" + id + ".bin", 3 * mesh_vals.vertices_count * sizeof(double),
+  //                   reinterpret_cast<char*>(mesh_vals.vertices.data()));
+  //utils::save_matrix("triangles_" + id + ".bin", 3 * mesh_vals.surface_triangles_count * sizeof(int),
+  //                   reinterpret_cast<char*>(mesh_vals.surface_triangles.data()));
+  //utils::save_matrix("tetrahedrons_" + id + ".bin", 4 * mesh_vals.tetrahedrons_count * sizeof(int),
+  //                   reinterpret_cast<char*>(mesh_vals.tetrahedrons.data()));
+  utils::save_matrix("apical_" + id + ".bin", apical_triangles_count * sizeof(int),
+                     reinterpret_cast<char*>(apical_triangles.data()));
+  // utils::save_matrix("n_dfa_" + id + ".bin", mesh_vals.vertices_count * sizeof(double), reinterpret_cast<char*>(n_dfa.data()));
+  // utils::save_matrix("e_dfa_" + id + ".bin", mesh_vals.tetrahedrons_count * sizeof(double),
+  //                   reinterpret_cast<char*>(e_dfa.data()));
+  // utils::save_matrix("common_" + id + ".bin", 3 * common_triangles_count * sizeof(int),
+  //                   reinterpret_cast<char*>(common_triangles.data()));
+  utils::save_matrix("basal_" + id + ".bin", basal_triangles_count * sizeof(int),
+                     reinterpret_cast<char*>(basal_triangles.data()));
+  // utils::save_matrix("e_dfb_" + id + ".bin", mesh_vals.tetrahedrons_count * sizeof(double),
+  //                   reinterpret_cast<char*>(e_dfb.data()));
   // ***********************************************************
 }
