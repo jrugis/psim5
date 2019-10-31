@@ -73,6 +73,11 @@ cCell_calcium::cCell_calcium(const std::string host_name, int my_rank, int a_ran
   // communicating with lumen (send info about connectivity, receive params)
   lumen_prep();
 
+  if (p[noCoupling] != 0) {
+    out << "<Cell_x> WARNING: Fluid flow coupling is disabled, the calcium model will run independently of fluid flow,";
+    out << " ignore fluid flow results!" << std::endl;
+  }
+
   // set up MPI datatype
   const int nitems = 2;
   int blocklengths[nitems] = {1, 1};
@@ -676,8 +681,17 @@ void cCell_calcium::lumen_exchange() {
   MPI_CHECK(MPI_Recv(&cell_volume_terms[0], 2, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD, &status));
 
   // first element is new volume, second is its derivative
-  cell_volume_term = cell_volume_terms[1] / cell_volume_terms[0];
-  volume_scaling = volume_at_rest / cell_volume_terms[0];
+  if (p[noCoupling] != 0) {
+    // Setting these values will disable the coupling back to Ca model (the fluid flow model
+    // will receive calcium inputs but the volume result of fluid flow will not be fed back
+    // to the calcium model. This is useful for debugging Ca model.
+    cell_volume_term = 0.0;
+    volume_scaling = 1.0;
+  }
+  else {
+    cell_volume_term = cell_volume_terms[1] / cell_volume_terms[0];
+    volume_scaling = volume_at_rest / cell_volume_terms[0];
+  }
 }
 
 void cCell_calcium::run()

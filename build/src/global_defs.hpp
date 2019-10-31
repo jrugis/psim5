@@ -69,6 +69,7 @@ enum calcium_parameters {
   delT,
   totalT,
   Tstride,
+  noCoupling,
   PLCsrt,
   PLCfin,
   c0,

@@ -19,6 +19,12 @@ totalT  0.1
 Tstride 1
 #----------------------------------------------------
 #
+# Disable coupling fluid flow back to Calcium model:
+#   (0 = do the coupling (default), 1 = coupling disabled (for debugging))
+#
+noCoupling 0
+#----------------------------------------------------
+#
 # PLC start time(sec), PLC finish time(sec)
 #       1      2      3      4      5      6      7
 PLCsrt  1000.0
