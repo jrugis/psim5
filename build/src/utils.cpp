@@ -57,32 +57,31 @@ void utils::get_parameters(const std::string file_id, int ptype, int cell_num, d
   std::string cpnames[PCOUNT] = {
     "delT",   "totalT", "Tstride", "PLCsrt", "PLCfin", "c0",    "ip0",     "ce0",   "Gamma",  "Dc",    "Dp",
     "De",     "Fc",     "Fip",     "d_RyR",  "V_RyR",  "K_RyR", "K_RyR2",  "m_RyR", "n_RyR",  "IPRdn", "IPRdf",
-    "k_beta", "K_p",    "K_c",     "K_h",    "kIPR",   "V_p",   "k_p",     "K_bar", "PLCds",  "PLCdl", "V_3K",
+    "k_beta", "K_p",    "K_c",     "K_h",    "k_IPR",  "V_p",   "k_p",     "K_bar", "PLCds",  "PLCdl", "V_3K",
     "V_5K",   "K_PLC",  "K3K",     "V_PLC",  "h0",     "K_tau", "tau_max", "g0",    "K_hRyR", "tau"};
 
   // fluid flow parameters
-  std::string fpnames[FPCOUNT] = { \
-    "odeSolver", "odeSolverAbsTol", "odeSolverRelTol", \
-    "aNkcc1", "a1", "a2", "a3", "a4", \
-    "r", "alpha1", "aNaK", \
-    "GtNa", "GtK", \
-    "GCl", "KCaCC", "eta1", \
-    "GK", "KCaKC", "eta2", \
-    "G1", "KNa", "KH", \
-    "G4", "KCl", "KB", \
-    "GB", "kn", "kp", \
-    "pHl", "pHi", "pHe", "HCO3l", "CO20", "Ul", "Cle", "Nae", \
-    "Ke", "HCO3e", "CO2e", "CO2l", "Hy", \
-    "La", "Lb", "Lt", \
-    "He", "Ie", "Hye", "St", "wl"}; // NOTE: these must match up with the enums in global_defs.hpp !!!
+  // NOTE: these must match up with the enums in global_defs.hpp !!!
+  std::string fpnames[FPCOUNT] = {
+    "odeSolver", "odeSolverAbsTol", "odeSolverRelTol",
+    "aNkcc1", "a1",   "a2", "a3",  "a4",  "r",  "alpha1", "aNaK", "GtNa", "GtK",  "GCl", "KCaCC", "eta1", "GK",
+    "KCaKC",  "eta2", "G1", "KNa", "KH",  "G4", "KCl",    "KB",   "GB",   "kn",   "kp",  "pHl",   "pHi",  "pHe",
+    "HCO3l",  "CO20", "Ul", "Cle", "Nae", "Ke", "HCO3e",  "CO2e",  "CO2l", "Hy",  "La",    "Lb",   "Lt",
+    "He", "Ie", "Hye", "St", "wl"};
 
-  if(ptype == calciumParms) {pnames = cpnames; pcount = PCOUNT;} // calcium simulation?
-  if(ptype == flowParms) {pnames = fpnames; pcount = FPCOUNT;}   // fluid flow?
+  if (ptype == calciumParms) {
+    pnames = cpnames;
+    pcount = PCOUNT;
+  } // calcium simulation?
+  if (ptype == flowParms) {
+    pnames = fpnames;
+    pcount = FPCOUNT;
+  } // fluid flow?
 
   if (not model_file.is_open()) {
     fatal_error("the model parameters file " + file_name + " could not be opened", out);
   }
-  
+
   out << "<utils> reading model parameters..." << std::endl;
   for (int n = 0; n < pcount; n++) p[n] = double(-1.0); // not-hit marker
   while (getline(model_file, line)) {
@@ -122,77 +121,29 @@ double utils::get_distance(const Vector3d& p, const Vector3d& v, const Vector3d&
 void utils::read_mesh(const std::string file_name, sMeshVals& mesh_vals, std::ofstream& out)
 {
   std::ifstream cell_file(file_name + ".bmsh", std::ios::in | std::ios::binary); // open the mesh file
-  if (not cell_file.is_open()) { utils::fatal_error("mesh file " + file_name + " could not be opened", out); }
-  uint32_t i32;
-  double f64;
+  if (not cell_file.is_open()) { fatal_error("mesh file " + file_name + " could not be opened", out); }
 
-  // get the mesh vertices (int32 count, 3x-float32 vertices)
-  cell_file.read(reinterpret_cast<char*>(&i32), sizeof(i32));
-  mesh_vals.vertices_count = i32;
+  // get the mesh vertices (int count, 3x-double vertices)
+  cell_file.read(reinterpret_cast<char*>(&(mesh_vals.vertices_count)), sizeof(int));
   mesh_vals.vertices.resize(mesh_vals.vertices_count, Eigen::NoChange);
-  for (int n = 0; n < mesh_vals.vertices_count; n++) {
-    for (int m = 0; m < 3; m++) {
-      cell_file.read(reinterpret_cast<char*>(&f64), sizeof(f64));
-      mesh_vals.vertices(n, m) = f64;
-    }
-  }
-  // get the surface triangles (int32 count, 3x-int32 vertex indices)
-  cell_file.read(reinterpret_cast<char*>(&i32), sizeof(i32));
-  mesh_vals.surface_triangles_count = i32;
+  cell_file.read(reinterpret_cast<char*>(mesh_vals.vertices.data()), 3 * mesh_vals.vertices_count * sizeof(double));
+  
+  // get the surface triangles (int count, 3x-int vertex indices)
+  cell_file.read(reinterpret_cast<char*>(&(mesh_vals.surface_triangles_count)), sizeof(int));
   mesh_vals.surface_triangles.resize(mesh_vals.surface_triangles_count, Eigen::NoChange);
-  for (int n = 0; n < mesh_vals.surface_triangles_count; n++) {
-    for (int m = 0; m < 3; m++) {
-      cell_file.read(reinterpret_cast<char*>(&i32), sizeof(i32));
-      mesh_vals.surface_triangles(n, m) = i32; // NOTE: zero indexed
-    }
-  }
-  // get the element tetrahedrons (int32 count, 4x-int32 vertex indices)
-  cell_file.read(reinterpret_cast<char*>(&i32), sizeof(i32));
-  mesh_vals.tetrahedrons_count = i32;
+  cell_file.read(reinterpret_cast<char*>(mesh_vals.surface_triangles.data()), 3 * mesh_vals.surface_triangles_count * sizeof(int));
+
+  // get the element tetrahedrons (int count, 4x-int vertex indices)
+  cell_file.read(reinterpret_cast<char*>(&(mesh_vals.tetrahedrons_count)), sizeof(int));
   mesh_vals.tetrahedrons.resize(mesh_vals.tetrahedrons_count, Eigen::NoChange);
-  for (int n = 0; n < mesh_vals.tetrahedrons_count; n++) {
-    for (int m = 0; m < 4; m++) {
-      cell_file.read(reinterpret_cast<char*>(&i32), sizeof(i32));
-      mesh_vals.tetrahedrons(n, m) = i32; // NOTE: zero indexed
-    }
-  }
+  cell_file.read(reinterpret_cast<char*>(mesh_vals.tetrahedrons.data()), 4 * mesh_vals.tetrahedrons_count * sizeof(int));
+
   cell_file.close();
 }
 
-void utils::save_matrix(const std::string file_name, const MatrixNNd& mat)
-{
-  int rows = mat.rows();
-  int cols = mat.cols();
-  int rc = rows * cols;
-  double* buf = new double[rc]; // temporary buffer
-  int n = 0;
-  for (int r = 0; r < rows; r++) {
-    for (int c = 0; c < cols; c++) {
-      buf[n++] = mat(r, c); // flatten the data
-    }
-  }
+void utils::save_matrix(const std::string file_name, int bytes, char* data){
   std::ofstream data_file;
   data_file.open(file_name, std::ios::binary);
-  data_file.write(reinterpret_cast<char*>(buf), rc * sizeof(double));
+  data_file.write(data, bytes);
   data_file.close();
-  delete (buf);
-}
-
-void utils::save_integer_matrix(const std::string file_name, const MatrixNNi& mat)
-{
-  int rows = mat.rows();
-  int cols = mat.cols();
-  int rc = rows * cols;
-  int* buf = new int[rc]; // temporary buffer
-  int n = 0;
-  for (int r = 0; r < rows; r++) {
-    for (int c = 0; c < cols; c++) {
-      buf[n++] = mat(r, c); // flatten the data
-    }
-  }
-  std::ofstream data_file;
-  data_file.open(file_name, std::ios::binary);
-  data_file.write(reinterpret_cast<char*>(buf), rc * sizeof(int));
-  data_file.close();
-  delete (buf);
 }

@@ -11,6 +11,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <mpi.h>
+#include <string>
 
 //************************************************************************
 // model sizes
@@ -50,23 +51,21 @@ enum acinus2cell { dTime, cTime, sError, ACCOUNT };
 //  delta time, current time, apical calcium, basal calcium, cell volume
 enum acinus2lumen { dlTime, clTime, aC, Bc, cV, ALCOUNT };
 
-//************************************************************************ 
+//************************************************************************
 // cell to cell mpi message
 // triangle index, value
-enum cell2cell{ \
-  tInd, tVal, \
-  C2CCOUNT};
+enum cell2cell { tInd, tVal, C2CCOUNT };
 
 //************************************************************************
 // cell to cell connectivity
 //  this_triangle, other_cell, other_triangle
 enum cell_conn { tTri, oCell, oTri, CCONNCOUNT };
 
+//************************************************************************
 enum parameter_types { calciumParms, flowParms, PTCOUNT };
 
-//************************************************************************
-// the 3D calcium model parameters
-enum model_parameters {
+// the calcium model parameters
+enum calcium_parameters {
   delT,
   totalT,
   Tstride,
@@ -93,7 +92,7 @@ enum model_parameters {
   K_p,
   K_c,
   K_h,
-  kIPR,
+  k_IPR,
   V_p,
   k_p,
   K_bar,

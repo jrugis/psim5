@@ -278,7 +278,8 @@ void cCell_calcium::make_matrices()
     stiffce(vi(3), vi(2)) = stiffce(vi(2), vi(3));
     small_mass(vi(3), vi(2)) = small_mass(vi(2), vi(3));
   }
-  // utils::save_matrix("tet_vol_" + id + ".bin", element_data.col(VOL_e));
+  utils::save_matrix("tet_vol_" + id + ".bin", mesh->mesh_vals.tetrahedrons_count * sizeof(double),
+                   reinterpret_cast<char*>(element_data.col(VOL_e).data()));
 
   // construct sparse mass matrix from a list of triplets (non zero elements)
   std::vector<Triplet> triplet_list;
@@ -375,7 +376,7 @@ Array1VC cCell_calcium::get_apical_reactions(double c, double ip, double ce, dou
   double po = beta / (beta + p[k_beta] * (beta + alpha));
 
   Array1VC reactions;
-  reactions(0) = p[kIPR] * po * (ce - c);
+  reactions(0) = p[k_IPR] * po * (ce - c);
   reactions(1) = ip;
   reactions(2) = -reactions(0) / p[Gamma];
   return reactions;

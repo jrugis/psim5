@@ -135,7 +135,7 @@ if(len(sys.argv) >= 7):
     quit()
   p1_array, p2_array = get_sweep_parms(sweep)
 
-mesh_base = "4sim_out_N4_p3-p2-p4-Xtet.bin"
+mesh_base = "out_N4_p3-p2-p4-Xtet.bmsh"
 
 # create the top level results directory
 list = run_dir.split("/")[-4:]
