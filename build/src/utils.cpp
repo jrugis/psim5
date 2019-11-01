@@ -54,10 +54,10 @@ void utils::get_parameters(const std::string file_id, int ptype, int cell_num, d
   // calcium simulation parameters
   // NOTE: these must match up with the enums in global_defs.hpp !!!
   std::string cpnames[PCOUNT] = {
-    "delT",   "totalT", "Tstride", "PLCsrt", "PLCfin", "c0",    "ip0",     "ce0",   "Gamma",  "Dc",    "Dp",
-    "De",     "Fc",     "Fip",     "d_RyR",  "V_RyR",  "K_RyR", "K_RyR2",  "m_RyR", "n_RyR",  "IPRdn", "IPRdf",
-    "k_beta", "K_p",    "K_c",     "K_h",    "k_IPR",  "V_p",   "k_p",     "K_bar", "PLCds",  "PLCdl", "V_3K",
-    "V_5K",   "K_PLC",  "K3K",     "V_PLC",  "h0",     "K_tau", "tau_max", "g0",    "K_hRyR", "tau"};
+    "delT",   "totalT", "Tstride", "PLCsrt", "PLCfin", "APICALds", "APICALdl", "c0",    "ip0",    "ce0",   "Gamma",
+    "Dc",     "Dp",     "De",      "Fc",     "Fip",    "d_RyR",    "V_RyR",    "K_RyR", "K_RyR2", "m_RyR", "n_RyR",
+    "k_beta", "K_p",    "K_c",     "K_h",    "k_IPR",  "V_p",      "k_p",      "K_bar", "PLCds",  "PLCdl", "V_3K",
+    "V_5K",   "K_PLC",  "K3K",     "V_PLC",  "h0",     "K_tau",    "tau_max",  "g0",    "K_hRyR", "tau"};
 
   // fluid flow parameters
   // NOTE: these must match up with the enums in global_defs.hpp !!!
@@ -122,7 +122,7 @@ void utils::read_mesh(const std::string file_name, sMeshVals& mesh_vals, std::of
   cell_file.read(reinterpret_cast<char*>(&(mesh_vals.vertices_count)), sizeof(int));
   mesh_vals.vertices.resize(mesh_vals.vertices_count, Eigen::NoChange);
   cell_file.read(reinterpret_cast<char*>(mesh_vals.vertices.data()), 3 * mesh_vals.vertices_count * sizeof(double));
-  
+
   // get the surface triangles (int count, 3x-int vertex indices)
   cell_file.read(reinterpret_cast<char*>(&(mesh_vals.surface_triangles_count)), sizeof(int));
   mesh_vals.surface_triangles.resize(mesh_vals.surface_triangles_count, Eigen::NoChange);
@@ -136,7 +136,8 @@ void utils::read_mesh(const std::string file_name, sMeshVals& mesh_vals, std::of
   cell_file.close();
 }
 
-void utils::save_matrix(const std::string file_name, int bytes, char* data){
+void utils::save_matrix(const std::string file_name, int bytes, char* data)
+{
   std::ofstream data_file;
   data_file.open(file_name, std::ios::binary);
   data_file.write(data, bytes);

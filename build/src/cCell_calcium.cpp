@@ -218,8 +218,8 @@ void cCell_calcium::make_matrices()
     stiffce(vi(3), vi(2)) = stiffce(vi(2), vi(3));
     small_mass(vi(3), vi(2)) = small_mass(vi(2), vi(3));
   }
-  utils::save_matrix("tet_vol_" + id + ".bin", mesh->mesh_vals.tetrahedrons_count * sizeof(double),
-                   reinterpret_cast<char*>(element_data.col(VOL_e).data()));
+  // utils::save_matrix("tet_vol_" + id + ".bin", mesh->mesh_vals.tetrahedrons_count * sizeof(double),
+  //               reinterpret_cast<char*>(element_data.col(VOL_e).data()));
 
   // construct sparse mass matrix from a list of triplets (non zero elements)
   std::vector<Triplet> triplet_list;
