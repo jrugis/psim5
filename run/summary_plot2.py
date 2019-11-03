@@ -47,15 +47,17 @@ if not os.path.exists(lib_path):
     print("you must run 'make'")
     sys.exit(1)
 _lib = ctypes.CDLL(lib_path)
-_lib.load_summary_plot_data.restype = None
+_lib.load_summary_plot_data.restype = ctypes.c_int
 _lib.load_summary_plot_data.argtypes = [
   ctypes.c_char_p,
   ctypes.c_int,
   ctypes.c_int,
   np.ctypeslib.ndpointer(dtype=np.float32),
   np.ctypeslib.ndpointer(dtype=np.float32),
-  np.ctypeslib.ndpointer(dtype=np.float32),
-  np.ctypeslib.ndpointer(dtype=np.float32),
+  ctypes.c_int,
+  np.ctypeslib.ndpointer(dtype=np.int32),
+  ctypes.c_int,
+  np.ctypeslib.ndpointer(dtype=np.int32),
 ]
 
 ##################################################################
@@ -64,6 +66,9 @@ _lib.load_summary_plot_data.argtypes = [
 
 def get_data_fluid_flow(ntime):
   fname = "l1_results.dat"
+  if not os.path.exists(fname):
+      return None, None
+
   data = np.loadtxt(fname)
   assert data.shape[0] == ntime, "Wrong number of lines in fluid flow results"
 
@@ -107,6 +112,19 @@ def get_node_count(fname):
 # main program
 ##################################################################
 
+# get the x-axis time values
+x = get_time_vals("a1")
+
+# load fluid flow results
+if plot_ffr or "volume" in dtypes:
+    volumes, ffr = get_data_fluid_flow(x.shape[0])
+    # if fluid flow was disabled don't plot it
+    if volumes is None and ffr is None:
+        print("Warning: disabling fluid flow and volume plotting since no lumen results file exists")
+        plot_ffr = False
+        if "volume" in dtypes:
+            dtypes.remove("volume")
+
 print("create summary plot")
 
 nplots = len(dtypes) + 1 if plot_ffr else len(dtypes)
@@ -116,16 +134,10 @@ plt.subplots_adjust(wspace = 0.5)
 fig.set_size_inches(ncells * 7.6, nplots * 5.0)
 fig.text(0.02, 0.96, os.getcwd(), fontsize=20)
 
-# get the x-axis time values
-x = get_time_vals("a1")
-
-# load fluid flow results
-if plot_ffr or "volume" in dtypes:
-    volumes, ffr = get_data_fluid_flow(x.shape[0])
-
 # main loop over plots
 for cell in range(ncells):
   dname = "a1c" + str(cell + 1)
+  print("plotting {}".format(dname))
   nodes = get_node_count(dname + ".out")
   if cell == 0 and plot_ffr:
     pass
@@ -135,11 +147,35 @@ for cell in range(ncells):
 
   # load ca and ip3 data
   if "ca" in dtypes or "ip3" in dtypes:
-      ca_apical = np.empty(x.shape[0], np.float32)
-      ca_basal = np.empty(x.shape[0], np.float32)
-      ip_apical = np.empty(x.shape[0], np.float32)
-      ip_basal = np.empty(x.shape[0], np.float32)
-      _lib.load_summary_plot_data(dname.encode("utf-8"), cell + 1, x.shape[0], ca_apical, ca_basal, ip_apical, ip_basal)
+      # first we load the list of apical and basal nodes
+      apical_nodes = np.fromfile("apical_nodes_{}.bin".format(dname), dtype=np.int32)
+      basal_nodes = np.fromfile("basal_nodes_{}.bin".format(dname), dtype=np.int32)
+      print("  num apical nodes = {0}, num basal nodes = {1}".format(len(apical_nodes), len(basal_nodes)))
+
+      # now load the result and calculate averages at apical and basal nodes
+      if "ca" in dtypes:
+          # for calcium
+          ca_apical = np.empty(x.shape[0], np.float32)
+          ca_basal = np.empty(x.shape[0], np.float32)
+          filename = dname + "_ca.bin"
+          status = _lib.load_summary_plot_data(filename.encode("utf-8"), x.shape[0], nodes, ca_apical, ca_basal,
+                  len(apical_nodes), apical_nodes, len(basal_nodes), basal_nodes)
+          if status < 0:
+              sys.exit("Error open result file: {}".format(result_file))
+          if status > 0:
+              sys.exit("Error reading row in result file: {}".format(status))
+
+      if "ip3" in dtypes:
+          # for ip3
+          ip_apical = np.empty(x.shape[0], np.float32)
+          ip_basal = np.empty(x.shape[0], np.float32)
+          filename = dname + "_ip3.bin"
+          status = _lib.load_summary_plot_data(filename.encode("utf-8"), x.shape[0], nodes, ip_apical, ip_basal,
+                  len(apical_nodes), apical_nodes, len(basal_nodes), basal_nodes)
+          if status < 0:
+              sys.exit("Error open result file: {}".format(result_file))
+          if status > 0:
+              sys.exit("Error reading row in result file: {}".format(status))
 
   # plot ca
   if "ca" in dtypes:
