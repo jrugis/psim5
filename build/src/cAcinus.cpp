@@ -31,7 +31,6 @@ cAcinus::cAcinus(const std::string host_name, int rank, int c_rank, int c_count)
   // for now just run the Lumen from within Acinus but could be moved to separated process if needed
   // or if there are multiple Lumen
   lumen = new cLumen(host_name, rank, c_rank, c_count);
-  lumen->init(p[Tstride]);
 }
 
 cAcinus::~cAcinus() {
@@ -71,13 +70,26 @@ void cAcinus::run()
   struct timespec start, end;
   double elapsed;
 
+  // initialising lumen
+  if (p[fluidFlow] != 0) {
+    lumen->init(p[Tstride]);
+  }
+
   // simulation time stepping and synchronization
   clock_gettime(CLOCK_REALTIME, &start);
   while ((p[totalT] - t) > 0.000001 ) { // HARD CODED: assumes solver_dt always > 1us
-    snd(t, solver_dt);                  // invoke the calcium solver
-    lumen->iterate(t, solver_dt);       // invoke the fluid flow solver
-    error = recv();                     // wait for calcium solver to complete step
-    if(error != 0.0) {                  // change time step?
+    // invoke the calcium solver
+    snd(t, solver_dt);
+    
+    // invoke the fluid flow solver
+    if (p[fluidFlow] != 0) {
+      lumen->iterate(t, solver_dt);
+    }
+
+    // wait for the calcium solver to complete a step
+    error = recv();
+
+    if(error != 0.0) { // change time step?
       // ...
     } 
     clock_gettime(CLOCK_REALTIME, &end);

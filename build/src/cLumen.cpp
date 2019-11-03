@@ -34,13 +34,6 @@ cLumen::cLumen(const std::string host_name, int rank, int c_rank, int c_count) :
   out << std::fixed << std::setprecision(6);
   out << "<Lumen> id: " << id << std::endl;
   out << "<Lumen> host_name: " << host_name << std::endl;
-
-  // file for storing results (all variable values)
-  vars_file.open(id + "_results.dat");
-  vars_file << std::scientific << std::setprecision(15);
-
-  // load fluid flow parameters
-  utils::get_parameters(id, flowParms, 1, p, out);
 }
 
 cLumen::~cLumen() {
@@ -57,6 +50,13 @@ cLumen::~cLumen() {
 }
 
 void cLumen::init(int tstride_) {
+  // file for storing results (all variable values)
+  vars_file.open(id + "_results.dat");
+  vars_file << std::scientific << std::setprecision(15);
+
+  // load fluid flow parameters
+  utils::get_parameters(id, flowParms, 1, p, out);
+
   tstride = tstride_;
   prep_cell_calcium();
   load_adjacency_matrix();

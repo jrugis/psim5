@@ -55,7 +55,7 @@ void utils::get_parameters(const std::string file_id, int ptype, int cell_num, d
   // calcium simulation parameters
   // NOTE: these must match up with the enums in global_defs.hpp !!!
   std::string cpnames[PCOUNT] = {
-    "delT",   "totalT", "Tstride", "noCoupling", "PLCsrt", "PLCfin", "APICALds", "APICALdl", "c0",    "ip0",    "ce0",   "Gamma",
+    "delT",   "totalT", "Tstride", "fluidFlow", "PLCsrt", "PLCfin", "APICALds", "APICALdl", "c0",    "ip0",    "ce0",   "Gamma",
     "Dc",     "Dp",     "De",      "Fc",     "Fip",    "d_RyR",    "V_RyR",    "K_RyR", "K_RyR2", "m_RyR", "n_RyR",
     "k_beta", "K_p",    "K_c",     "K_h",    "k_IPR",  "V_p",      "k_p",      "K_bar", "PLCds",  "PLCdl", "V_3K",
     "V_5K",   "K_PLC",  "K3K",     "V_PLC",  "h0",     "K_tau",    "tau_max",  "g0",    "K_hRyR", "tau"};

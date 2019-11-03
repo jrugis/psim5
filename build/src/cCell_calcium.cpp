@@ -70,12 +70,11 @@ cCell_calcium::cCell_calcium(const std::string host_name, int my_rank, int a_ran
   ip3_file.open(id + "_ip3.bin", std::ios::binary);
   cer_file.open(id + "_cer.bin", std::ios::binary);
 
-  // communicating with lumen (send info about connectivity, receive params)
-  lumen_prep();
-
-  if (p[noCoupling] != 0) {
-    out << "<Cell_x> WARNING: Fluid flow coupling is disabled, the calcium model will run independently of fluid flow,";
-    out << " ignore fluid flow results!" << std::endl;
+  // set up fluid flow stuff
+  cell_volume_term = 0.0;
+  volume_scaling = 1.0;
+  if (p[fluidFlow] == 0) {
+    out << "<Cell_x> Fluid flow coupling is disabled!" << std::endl;
   }
 
   // set up MPI datatype
@@ -681,17 +680,8 @@ void cCell_calcium::lumen_exchange() {
   MPI_CHECK(MPI_Recv(&cell_volume_terms[0], 2, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD, &status));
 
   // first element is new volume, second is its derivative
-  if (p[noCoupling] != 0) {
-    // Setting these values will disable the coupling back to Ca model (the fluid flow model
-    // will receive calcium inputs but the volume result of fluid flow will not be fed back
-    // to the calcium model. This is useful for debugging Ca model.
-    cell_volume_term = 0.0;
-    volume_scaling = 1.0;
-  }
-  else {
-    cell_volume_term = cell_volume_terms[1] / cell_volume_terms[0];
-    volume_scaling = volume_at_rest / cell_volume_terms[0];
-  }
+  cell_volume_term = cell_volume_terms[1] / cell_volume_terms[0];
+  volume_scaling = volume_at_rest / cell_volume_terms[0];
 }
 
 void cCell_calcium::run()
@@ -708,6 +698,12 @@ void cCell_calcium::run()
   rhs.resize(DIFVARS * np, Eigen::NoChange);
   bool plc;
 
+  // communicating with lumen (send info about connectivity, receive params)
+  if (p[fluidFlow] != 0) {
+    lumen_prep();
+  }
+
+  // main loop
   int step = 0;
   while (true) {
     step++;
@@ -730,7 +726,9 @@ void cCell_calcium::run()
     plc = ((current_time >= p[PLCsrt]) and (current_time <= p[PLCfin])); // PLC on or off?
 
     // Lumen exchange (send Ca info for fx_ap and fx_ba, receive back volume)
-    lumen_exchange();
+    if (p[fluidFlow] != 0) {
+      lumen_exchange();
+    }
 
     if (delta_time != prev_delta_time) { // recalculate A matrix if time step changed
       sparseA = sparseMass + (delta_time * sparseStiff);
