@@ -19,14 +19,15 @@ parser.add_argument("--no-ca", action="store_true", help="Don't plot ca")
 parser.add_argument("--no-ip3", action="store_true", help="Don't plot ip3")
 parser.add_argument("--no-volume", action="store_true", help="Don't plot volume")
 parser.add_argument("--no-ffr", action="store_true", help="Don't plot fluid flow rate")
-parser.add_argument("--ncells", type=int, default=7, help="Number of cells (default is 7)")
+parser.add_argument("--cells", type=int, nargs='*', default=[1, 2, 3, 4, 5, 6, 7], help="Cells to plot (default is 1 2 3 4 5 6 7)")
 parser.add_argument("--nintra", type=int, default=8, help="Number of intracellular variables (default is 8)")
 parser.add_argument("--font-size", type=int, default=16, help="Font size for matplotlib (default is 16)")
 parser.add_argument("-o", "--output", default="summary_plot2.pdf", help="File name to save plot to (default is summary_plot2.pdf)")
 args = parser.parse_args()
 
 plt.rcParams.update({'font.size': args.font_size})
-ncells = args.ncells
+ncells = len(args.cells)
+print("plotting cells:", args.cells)
 nintra = args.nintra
 dtypes = []
 if not args.no_ca:
@@ -72,7 +73,7 @@ def get_data_fluid_flow(ntime):
   data = np.loadtxt(fname)
   assert data.shape[0] == ntime, "Wrong number of lines in fluid flow results"
 
-  vol_cols = [i * nintra + 0 for i in range(ncells)]
+  vol_cols = [i * nintra + 0 for i in args.cells]
   volumes = data[:, vol_cols]
   ffr = data[:, -1]
 
@@ -135,15 +136,15 @@ fig.set_size_inches(ncells * 7.6, nplots * 5.0)
 fig.text(0.02, 0.96, os.getcwd(), fontsize=20)
 
 # main loop over plots
-for cell in range(ncells):
-  dname = "a1c" + str(cell + 1)
+for celli, cell in enumerate(args.cells):
+  dname = "a1c" + str(cell)
   print("plotting {}".format(dname))
   nodes = get_node_count(dname + ".out")
-  if cell == 0 and plot_ffr:
+  if celli == 0 and plot_ffr:
     pass
   else:
-    plots[len(dtypes)-1, cell].set_xlabel(" time (s)")
-  plots[0, cell].set_title("Cell " + str(cell+1))
+    plots[len(dtypes)-1, celli].set_xlabel(" time (s)")
+  plots[0, celli].set_title("Cell " + str(cell))
 
   # load ca and ip3 data
   if "ca" in dtypes or "ip3" in dtypes:
@@ -180,21 +181,21 @@ for cell in range(ncells):
   # plot ca
   if "ca" in dtypes:
       ca_index = dtypes.index("ca")
-      plots[ca_index, cell].plot(x, ca_apical, color='blue', label='apical')
-      plots[ca_index, cell].plot(x, ca_basal, color='red', label='basal')
-      plots[ca_index, cell].legend(loc='best')
+      plots[ca_index, celli].plot(x, ca_apical, color='blue', label='apical')
+      plots[ca_index, celli].plot(x, ca_basal, color='red', label='basal')
+      plots[ca_index, celli].legend(loc='best')
 
   # plot ip3
   if "ip3" in dtypes:
       ip_index = dtypes.index("ip3")
-      plots[ip_index, cell].plot(x, ip_apical, color='blue', label='apical')
-      plots[ip_index, cell].plot(x, ip_basal, color='red', label='basal')
-      plots[ip_index, cell].legend(loc='best')
+      plots[ip_index, celli].plot(x, ip_apical, color='blue', label='apical')
+      plots[ip_index, celli].plot(x, ip_basal, color='red', label='basal')
+      plots[ip_index, celli].legend(loc='best')
 
   # plot volumes
   if "volume" in dtypes:
       vol_index = dtypes.index("volume")
-      plots[vol_index, cell].plot(x, volumes[:, cell], color='blue')
+      plots[vol_index, celli].plot(x, volumes[:, celli], color='blue')
 
 for i, dtype in enumerate(dtypes):
     if dtype == 'volume':
