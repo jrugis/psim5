@@ -89,11 +89,28 @@ void cCellMesh::calc_apical_basal()
       (n_dfa(mesh_vals.surface_triangles(n, 0)) + n_dfa(mesh_vals.surface_triangles(n, 1)) +
        n_dfa(mesh_vals.surface_triangles(n, 2))) /
       3.0;
-    if (d < parent->p[IPRdn]) apical_triangles(apical_triangles_count++) = n;
-    if (d < (parent->p[PLCdl])) apical_keepout(apical_keepout_count++) = n;
+    if (d < parent->p[APICALds]) apical_triangles(apical_triangles_count++) = n;
+    if (d < (parent->p[APICALdl])) apical_keepout(apical_keepout_count++) = n;
   }
   apical_triangles.conservativeResize(apical_triangles_count, 1); // actual triangles count
   apical_keepout.conservativeResize(apical_keepout_count, 1);     // actual triangles count
+
+  // save a list of the apical node indices (only used by post-processing plotting)
+  MatrixN1i apical_nodes;                                         // apical node indices
+  apical_nodes.resize(mesh_vals.vertices_count, Eigen::NoChange); // overkill size for now
+  apical_nodes.setZero(mesh_vals.vertices_count);
+  for (int n = 0; n < apical_triangles_count; n++) {
+    for (int m = 0; m < 3; m++) {
+      apical_nodes(mesh_vals.surface_triangles(apical_triangles(n), m)) = 1; // flag as apical
+    }
+  }
+  int apical_nodes_count = 0;
+  for (int n = 0; n < mesh_vals.vertices_count; n++) { // convert (in-place) what's left to a list of indices
+    if (apical_nodes(n)) { apical_nodes(apical_nodes_count++) = n; }
+  }
+  apical_nodes.conservativeResize(apical_nodes_count, Eigen::NoChange); // actual size
+  utils::save_matrix("apical_nodes_" + id + ".bin", apical_nodes_count * sizeof(int),
+                     reinterpret_cast<char*>(apical_nodes.data()));
 
   // determine the basal triangle indices by considering all surface triangles
   //	 then eliminating the common triangles and the triangles that are too close to the lumen
@@ -106,10 +123,26 @@ void cCellMesh::calc_apical_basal()
     basal_triangles(apical_keepout(n)) = 0;
   }
   basal_triangles_count = 0;
-  for (int n = 0; n < mesh_vals.surface_triangles_count; n++) { // convert what's left to a list of indices
+  for (int n = 0; n < mesh_vals.surface_triangles_count; n++) { // convert (in-place) what's left to a list of indices
     if (basal_triangles(n)) { basal_triangles(basal_triangles_count++) = n; }
   }
   basal_triangles.conservativeResize(basal_triangles_count, Eigen::NoChange); // actual size
+
+  // save a list of the basal node indices (only used by post-processing plotting)
+  MatrixN1i basal_nodes;                                         // basal node indices
+  basal_nodes.resize(mesh_vals.vertices_count, Eigen::NoChange); // overkill size for now
+  basal_nodes.setZero(mesh_vals.vertices_count);
+  for (int n = 0; n < basal_triangles_count; n++) {
+    for (int m = 0; m < 3; m++) {
+      basal_nodes(mesh_vals.surface_triangles(basal_triangles(n), m)) = 1; // flag as basal
+    }
+  }
+  int basal_nodes_count = 0;
+  for (int n = 0; n < mesh_vals.vertices_count; n++) { // convert (in-place) what's left to a list of indices
+    if (basal_nodes(n)) { basal_nodes(basal_nodes_count++) = n; }
+  }
+  basal_nodes.conservativeResize(basal_nodes_count, Eigen::NoChange); // actual size
+  utils::save_matrix("basal_nodes_" + id + ".bin", basal_nodes_count * sizeof(int), reinterpret_cast<char*>(basal_nodes.data()));
 }
 
 // calculate the distance from elements to basal surface
@@ -214,21 +247,21 @@ void cCellMesh::print_info()
   parent->out << "<CellMesh> common_triangles_count: " << common_triangles_count << std::endl;
 
   // ***********************************************************
-  //utils::save_matrix("vertices_" + id + ".bin", 3 * mesh_vals.vertices_count * sizeof(double),
+  // utils::save_matrix("vertices_" + id + ".bin", 3 * mesh_vals.vertices_count * sizeof(double),
   //                   reinterpret_cast<char*>(mesh_vals.vertices.data()));
-  //utils::save_matrix("triangles_" + id + ".bin", 3 * mesh_vals.surface_triangles_count * sizeof(int),
+  // utils::save_matrix("triangles_" + id + ".bin", 3 * mesh_vals.surface_triangles_count * sizeof(int),
   //                   reinterpret_cast<char*>(mesh_vals.surface_triangles.data()));
-  //utils::save_matrix("tetrahedrons_" + id + ".bin", 4 * mesh_vals.tetrahedrons_count * sizeof(int),
+  // utils::save_matrix("tetrahedrons_" + id + ".bin", 4 * mesh_vals.tetrahedrons_count * sizeof(int),
   //                   reinterpret_cast<char*>(mesh_vals.tetrahedrons.data()));
-  utils::save_matrix("apical_" + id + ".bin", apical_triangles_count * sizeof(int),
-                     reinterpret_cast<char*>(apical_triangles.data()));
+  // utils::save_matrix("apical_" + id + ".bin", apical_triangles_count * sizeof(int),
+  //                   reinterpret_cast<char*>(apical_triangles.data()));
   // utils::save_matrix("n_dfa_" + id + ".bin", mesh_vals.vertices_count * sizeof(double), reinterpret_cast<char*>(n_dfa.data()));
   // utils::save_matrix("e_dfa_" + id + ".bin", mesh_vals.tetrahedrons_count * sizeof(double),
   //                   reinterpret_cast<char*>(e_dfa.data()));
   // utils::save_matrix("common_" + id + ".bin", 3 * common_triangles_count * sizeof(int),
   //                   reinterpret_cast<char*>(common_triangles.data()));
-  utils::save_matrix("basal_" + id + ".bin", basal_triangles_count * sizeof(int),
-                     reinterpret_cast<char*>(basal_triangles.data()));
+  // utils::save_matrix("basal_" + id + ".bin", basal_triangles_count * sizeof(int),
+  //                   reinterpret_cast<char*>(basal_triangles.data()));
   // utils::save_matrix("e_dfb_" + id + ".bin", mesh_vals.tetrahedrons_count * sizeof(double),
   //                   reinterpret_cast<char*>(e_dfb.data()));
   // ***********************************************************
