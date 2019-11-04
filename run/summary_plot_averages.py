@@ -43,7 +43,7 @@ plot_ffr = False if args.no_ffr else True
 ##################################################################
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
-lib_path = os.path.join(script_dir, "_summary_plot.so")
+lib_path = os.path.join(script_dir, "_summary_plot_averages.so")
 if not os.path.exists(lib_path):
     print("you must run 'make'")
     sys.exit(1)
