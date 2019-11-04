@@ -12,9 +12,10 @@ git reset --hard origin/master
 Prerequisites
 -------------
 (could be put in .bash_profile)
-ml gimkl/2017a
-ml Eigen/3.3.4
-ml Python/2.7.14-gimkl-2017a
+ml Boost/1.69.0-GCCcore-7.4.0
+ml SUNDIALS/4.1.0-gimkl-2018b
+ml Eigen/3.3.7
+ml Python/3.7.3-gimkl-2018b
 
 
 Build
@@ -28,17 +29,23 @@ Run
 ---
 cd psim5/run
 
+make
+
 cp run_default.sl my_run_xxxx.sl
 cp flow_parms_default.dat my_flow_parms_xxxx.dat
+cp flow_init_default.dat my_flow_init_xxxx.dat
+cp flow_adj_default.dat my_flow_adj_xxxx.dat
 cp calcium_parms_default.dat my_calcium_parms_xxxx.dat
-cp sweep_parms_default.dat my_sweep_parms_xxxx.dat 
+cp sweep_parms_default.dat my_sweep_parms_xxxx.dat
 
 edit my_run_xxxx.sl
 edit my_flow_parms_xxxx.dat
+edit my_flow_init_xxxx.dat
+edit my_flow_adj_xxxx.dat
 edit my_calcium_parms_xxxx.dat
 edit my_sweep_parms_xxxx.dat
 
-python run_sim.py my_run_xxxx.sl my_flow_parms_xxxx.dat my_calcium_parms_xxxx.dat my_sweep_parms_xxxx.dat
+python run_sim.py my_run_xxxx.sl my_flow_parms_xxxx.dat my_flow_init_xxxx.dat my_flow_adj_xxxx.dat my_calcium_parms_xxxx.dat my_sweep_parms_xxxx.dat
 squeue -u UPI
 
 

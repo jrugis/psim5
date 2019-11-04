@@ -23,21 +23,26 @@ CPP = mpicxx
 #CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -pg 
 
 ## optimised
-CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -march=native -mtune=native -Wall
+CPP_FLAGS =  $(CPP_DEFS) $(CPP_INCLUDES) -m64 -O3 -march=native -mtune=native -Wall -Wpedantic -g
 
 ###########################################################################################
 ## program
 
 ## Mahuika
-CPP_INCLUDES = -I/usr/include
-#CPP_LIBS = -lsundials_cvodes
+#CPP_INCLUDES = -I/usr/include
+CPP_LIBS = -lsundials_cvode -lsundials_nvecserial
 
 EXE = ../run/psim5
-#OBJS = main.o utils.o cAcinus.o cLumen.o cCVodes.o cCell_flow.o cCell_calcium.o cCellMesh.o
-OBJS = main.o utils.o cAcinus.o cLumenTree.o cCell_calcium.o cCellMesh.o
+OBJS = main.o utils.o cAcinus.o cLumenTree.o cCell_calcium.o cCellMesh.o cLumen.o LSODA.o cLSODA.o cCVode.o
 SRC = ./src
 
 all: $(EXE)
+
+LSODA.o: $(SRC)/libsoda/LSODA.cpp $(SRC)/libsoda/LSODA.h $(SRC)/libsoda/helper.h
+	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
+
+cLSODA.o: $(SRC)/cLSODA.cpp $(SRC)/cLSODA.hpp $(SRC)/libsoda/LSODA.h $(SRC)/cLumen.hpp $(SRC)/utils.hpp
+	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
 main.o: $(SRC)/main.cpp $(SRC)/global_defs.hpp $(SRC)/cAcinus.hpp $(SRC)/cCell_calcium.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
@@ -45,20 +50,17 @@ main.o: $(SRC)/main.cpp $(SRC)/global_defs.hpp $(SRC)/cAcinus.hpp $(SRC)/cCell_c
 utils.o: $(SRC)/utils.cpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
-cAcinus.o: $(SRC)/cAcinus.cpp $(SRC)/cAcinus.hpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp
+cAcinus.o: $(SRC)/cAcinus.cpp $(SRC)/cAcinus.hpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp $(SRC)/cLumen.hpp
+	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
+
+cLumen.o: $(SRC)/cLumen.cpp $(SRC)/cLumen.hpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp $(SRC)/cCVode.hpp $(SRC)/cLSODA.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
 cLumenTree.o: $(SRC)/cLumenTree.cpp $(SRC)/cLumenTree.hpp $(SRC)/utils.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
-#cLumen.o: $(SRC)/cLumen.cpp $(SRC)/cLumen.hpp
-#	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
-
-#cCVodes.o: $(SRC)/cCVodes.cpp $(SRC)/cCVodes.hpp
-#	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
-
-#cCell_flow.o: $(SRC)/cCell_flow.cpp $(SRC)/cCell_flow.hpp
-#	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
+cCVode.o: $(SRC)/cCVode.cpp $(SRC)/cCVode.hpp $(SRC)/global_defs.hpp $(SRC)/utils.hpp $(SRC)/cLumen.hpp
+	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
 
 cCell_calcium.o: $(SRC)/cCell_calcium.cpp $(SRC)/cCell_calcium.hpp $(SRC)/cCellMesh.hpp $(SRC)/utils.hpp $(SRC)/global_defs.hpp
 	$(CPP) $(CPP_FLAGS) $(CPP_INCLUDES) -o $@ -c $<
@@ -70,4 +72,4 @@ $(EXE): $(OBJS)
 	$(CPP) $(CPP_FLAGS) $(CPP_LIBS) -o $@ $+
 
 clean:
-	rm *.o
+	rm -f *.o

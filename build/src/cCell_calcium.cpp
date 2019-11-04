@@ -20,10 +20,11 @@
 #include "global_defs.hpp"
 #include "utils.hpp"
 
-cCell_calcium::cCell_calcium(const std::string host_name, int my_rank, int a_rank)
+cCell_calcium::cCell_calcium(const std::string host_name, int my_rank, int a_rank, int l_rank)
 {
   cell_number = my_rank;
   acinus_rank = a_rank;
+  lumen_rank = l_rank;
   acinus_id = "a" + std::to_string(acinus_rank + 1);
   id = acinus_id + "c" + std::to_string(my_rank);
   out.open(id + ".out");
@@ -33,6 +34,8 @@ cCell_calcium::cCell_calcium(const std::string host_name, int my_rank, int a_ran
   utils::get_parameters(acinus_id, calciumParms, cell_number, p, out);
   mesh = new cCellMesh(id, this); // only do this after getting the parameters!!!
   mesh->print_info();
+
+  // common cells for exchanging ip3 preparation
   out << "<Cell_x> common faces with cells:";
   int other_cell = -1;
   int face_count = 0;
@@ -67,6 +70,11 @@ cCell_calcium::cCell_calcium(const std::string host_name, int my_rank, int a_ran
   ip3_file.open(id + "_ip3.bin", std::ios::binary);
   cer_file.open(id + "_cer.bin", std::ios::binary);
 
+  // set up fluid flow stuff
+  cell_volume_term = 0.0;
+  volume_scaling = 1.0;
+  if (p[fluidFlow] == 0) { out << "<Cell_x> Fluid flow coupling is disabled!" << std::endl; }
+
   // set up MPI datatype
   const int nitems = 2;
   int blocklengths[nitems] = {1, 1};
@@ -91,6 +99,59 @@ cCell_calcium::~cCell_calcium()
   }
   delete[] exchange_send_buffer;
   delete[] exchange_recv_buffer;
+}
+
+void cCell_calcium::lumen_prep()
+{
+  out << "<Cell_x> fluid flow preparation with Lumen..." << std::endl;
+
+  // common apical cells for fluid flow calculation
+  out << "<Cell_x> common apical faces with cells:";
+  int other_cell = -1;
+  int face_count = 0;
+  int start_index = 0;
+  for (int r = 0; r < mesh->apical_triangles_count; r++) {
+    if (mesh->common_apical_triangles(r, oCell) != other_cell) {
+      if (other_cell != -1) {
+        cells_apical.push_back({other_cell, face_count, start_index});
+        face_count = 0;
+        start_index = r;
+      }
+      other_cell = mesh->common_apical_triangles(r, oCell);
+      out << " " << other_cell + 1; // cells are zero indexed
+    }
+    face_count++;
+  }
+  cells_apical.push_back({other_cell, face_count, start_index}); // one more time
+  out << std::endl;
+
+  // send to Lumen the number of neighbours and "neigh" list
+  int num_neigh = cells_apical.size();
+  MPI_CHECK(MPI_Send(&num_neigh, 1, MPI_INT, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
+  std::vector<int> neigh(num_neigh);
+  for (int i = 0; i < num_neigh; i++) { neigh[i] = cells_apical[i].cell; }
+  MPI_CHECK(MPI_Send(neigh.data(), num_neigh, MPI_INT, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
+
+  // receive fluid flow parameters from Lumen
+  MPI_Status stat;
+  MPI_CHECK(MPI_Recv(fp, FPCOUNT, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD, &stat));
+
+  // compute and send to Lumen ratios of area of each connected apical region to total apical area
+  for (std::vector<cfc>::size_type i = 0; i < cells_apical.size(); i++) {
+    int start_index = cells_apical[i].sindex;
+    int num_tris = cells_apical[i].fcount;
+    double area = 0.0;
+    for (int j = 0; j < num_tris; j++) {
+      int this_tri = mesh->common_apical_triangles(start_index + j, tTri);
+      area += surface_data(this_tri, AREA_s);
+    }
+    cells_apical_area_ratios.push_back(area / surface_region_data[AREA_apical]);
+  }
+  MPI_CHECK(MPI_Send(cells_apical_area_ratios.data(), cells_apical_area_ratios.size(), MPI_DOUBLE, lumen_rank,
+                     LUMEN_CELL_TAG, MPI_COMM_WORLD));
+
+  // send area of basal region
+  MPI_CHECK(MPI_Send(&surface_region_data[AREA_basal], 1, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
 }
 
 void cCell_calcium::init_solvec()
@@ -282,6 +343,26 @@ void cCell_calcium::make_matrices()
       node_data(vi(i), BOOL_apical) = 1.0; // flag it as apical
     }
   }
+  // --------------------------------
+  // surface region data
+  // --------------------------------
+  surface_region_data[AREA_apical] = 0.0;
+  for (int n = 0; n < mesh->apical_triangles_count; n++) {
+    int this_tri = mesh->apical_triangles(n);
+    surface_region_data[AREA_apical] += surface_data(this_tri, AREA_s);
+  }
+  surface_region_data[AREA_basal] = 0.0;
+  for (int n = 0; n < mesh->basal_triangles_count; n++) {
+    int this_tri = mesh->basal_triangles(n);
+    surface_region_data[AREA_basal] += surface_data(this_tri, AREA_s);
+  }
+
+  // --------------------------------
+  // at rest volume
+  // --------------------------------
+  volume_at_rest = 0.0;
+  for (int n = 0; n < mesh->mesh_vals.tetrahedrons_count; n++) { volume_at_rest += element_data(n, VOL_e); }
+  out << "<Cell_x> volume at rest = " << volume_at_rest << std::endl;
 }
 
 Array1VC cCell_calcium::get_apical_reactions(double c, double ip, double ce, double h)
@@ -326,6 +407,9 @@ Array1VC cCell_calcium::get_body_reactions(double c, double ip, double ce, doubl
   reactions(1) = vplc - vdeg;
   reactions(2) = -reactions(0) / p[Gamma];
 
+  // scale reaction terms by (at_rest_volume / new_volume)
+  reactions *= volume_scaling;
+
   return reactions;
 }
 
@@ -362,10 +446,11 @@ MatrixN1d cCell_calcium::make_load(double dt, bool plc)
     Array1VC reactions =
       get_body_reactions(cav, ipav, ceav, gav, double(element_data(n, RYR_e)), double(plc ? element_data(n, PLC_e) : 0.0));
 
-    for (int i = 0; i < 4; i++) {                                    // for each tetrahedron vertex
-      load_c(vi(i)) += element_data(n, VOL_e) * 0.25 * reactions(0); // reaction terms, scaled by 1/4 volume
-      load_ip(vi(i)) += element_data(n, VOL_e) * 0.25 * reactions(1);
-      load_ce(vi(i)) += element_data(n, VOL_e) * 0.25 * reactions(2);
+    for (int i = 0; i < 4; i++) { // for each tetrahedron vertex
+      // reaction terms, scaled by 1/4 volume
+      load_c(vi(i)) += element_data(n, VOL_e) * 0.25 * (reactions(0) - cell_volume_term * c(vi(i)));
+      load_ip(vi(i)) += element_data(n, VOL_e) * 0.25 * (reactions(1) - cell_volume_term * ip(vi(i)));
+      load_ce(vi(i)) += element_data(n, VOL_e) * 0.25 * (reactions(2) - cell_volume_term * ce(vi(i)));
     }
   }
 
@@ -486,10 +571,9 @@ void cCell_calcium::exchange()
   exchange_load_ip.setZero();
 
   int num_connected_cells = cells.size();
-  MPI_Request send_requests[num_connected_cells];
-  MPI_Request recv_requests[num_connected_cells];
 
   // for each connected cell, compute the values to exchange and send them (non-blocking)
+  std::vector<MPI_Request> send_requests(num_connected_cells);
   for (int i = 0; i < num_connected_cells; i++) {
     int dest = cells[i].cell + 1;
     int mlength = cells[i].fcount;
@@ -503,6 +587,7 @@ void cCell_calcium::exchange()
   }
 
   // receive common triangle values back from other cells (non-blocking)
+  std::vector<MPI_Request> recv_requests(num_connected_cells);
   for (int i = 0; i < num_connected_cells; i++) {
     int source = cells[i].cell + 1;
     int mlength = cells[i].fcount;
@@ -514,13 +599,85 @@ void cCell_calcium::exchange()
   for (int i = 0; i < num_connected_cells; i++) {
     MPI_Status status;
     int recv_index;
-    MPI_CHECK(MPI_Waitany(num_connected_cells, recv_requests, &recv_index, &status));
+    MPI_CHECK(MPI_Waitany(num_connected_cells, recv_requests.data(), &recv_index, &status));
     compute_exchange_load(recv_index);
   }
 
   // wait on send requests (frees memory associated with sends, safe to reuse/free buffers)
-  MPI_Status send_statuses[num_connected_cells];
-  MPI_CHECK(MPI_Waitall(num_connected_cells, send_requests, send_statuses));
+  std::vector<MPI_Status> send_statuses(num_connected_cells);
+  MPI_CHECK(MPI_Waitall(num_connected_cells, send_requests.data(), send_statuses.data()));
+}
+
+void cCell_calcium::lumen_exchange()
+{
+  int num_apical_connected_cells = cells_apical.size();
+  std::vector<double> exchange_values(num_apical_connected_cells + 1);
+
+  // % Ca2+ Activated K+ Channels open probability
+  // PK = sum((1./(1+(par.KCaKC./(Ca{2}{cell_no})).^par.eta2)).*par.Sb_k{cell_no})./par.Sb{cell_no};
+  // where:
+  //   Ca{2}{cell_no} is array of average Ca values of basal triangles in this cell
+  //   par.Sb_k{cell_no} is array of surface areas of basal triangles in this cell
+  //   par.Sb{cell_no} is total surface area of basal triangles in this cell
+  double PK = 0.0;
+  for (int i = 0; i < mesh->basal_triangles_count; i++) {
+    int this_tri = mesh->basal_triangles(i);
+    double area_tri = surface_data(this_tri, AREA_s);
+
+    // average Ca at this triangle
+    double ca_tri = 0.0;
+    for (int j = 0; j < 3; j++) {
+      int vertex_index = mesh->mesh_vals.surface_triangles(this_tri, j);
+      ca_tri += solvec(vertex_index); // Ca is first
+    }
+    ca_tri *= third;
+
+    PK += (1.0 / (1.0 + pow(fp[KCaKC] / ca_tri, fp[eta2]))) * area_tri;
+  }
+  PK /= surface_region_data[AREA_basal];
+  exchange_values[num_apical_connected_cells] = PK;
+
+  // % Ca2+ Activated Apical Cl- Channels
+  // PCl=1./(1+(par.KCaCC./Ca{1}{c_no,ngh}).^par.eta1);
+  // PrCl = sum(PCl.*par.com_tri_ap{c_no,ngh}(:,3))/par.Sa{c_no};
+  // where:
+  //   Ca{1}{c_no,ngh} is array of average Ca values at apical triangles shared between this cell and ngh
+  //   par.com_tri_ap{c_no,ngh}(:,3) is array of surface areas of apical triangles shared between this cell and ngh
+  //   par.Sa{c_no} is (probably) total surface area of apical triangles in this cell??
+  for (int i = 0; i < num_apical_connected_cells; i++) {
+    int n_tri = cells_apical[i].fcount;
+    int s_ind = cells_apical[i].sindex;
+
+    double PrCl = 0.0;
+    for (int j = 0; j < n_tri; j++) {
+      int this_tri = mesh->common_apical_triangles(s_ind + j, tTri);
+      double area_tri = surface_data(this_tri, AREA_s);
+
+      // average Ca at this triangle
+      double ca_tri = 0.0;
+      for (int k = 0; k < 3; k++) {
+        int vertex_index = mesh->mesh_vals.surface_triangles(this_tri, k);
+        ca_tri += solvec(vertex_index); // Ca is first
+      }
+      ca_tri *= third;
+
+      PrCl += (1.0 / (1.0 + pow(fp[KCaCC] / ca_tri, fp[eta1]))) * area_tri;
+    }
+    PrCl /= surface_region_data[AREA_apical];
+
+    exchange_values[i] = PrCl;
+  }
+
+  // send to Lumen
+  MPI_CHECK(MPI_Send(exchange_values.data(), num_apical_connected_cells + 1, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD));
+
+  // receive volume back from Lumen
+  MPI_Status status;
+  MPI_CHECK(MPI_Recv(&cell_volume_terms[0], 2, MPI_DOUBLE, lumen_rank, LUMEN_CELL_TAG, MPI_COMM_WORLD, &status));
+
+  // first element is new volume, second is its derivative
+  cell_volume_term = cell_volume_terms[1] / cell_volume_terms[0];
+  volume_scaling = volume_at_rest / cell_volume_terms[0];
 }
 
 void cCell_calcium::run()
@@ -537,6 +694,10 @@ void cCell_calcium::run()
   rhs.resize(DIFVARS * np, Eigen::NoChange);
   bool plc;
 
+  // communicating with lumen (send info about connectivity, receive params)
+  if (p[fluidFlow] != 0) { lumen_prep(); }
+
+  // main loop
   int step = 0;
   while (true) {
     step++;
@@ -553,10 +714,13 @@ void cCell_calcium::run()
     }
 
     // not done
-    out << std::fixed << std::setprecision(3);
+    out << std::fixed << std::setprecision(6);
     out << "<Cell_x> step: " << step << " current_time: " << current_time << "s";
     out << " delta_time: " << delta_time << "s" << std::endl;
     plc = ((current_time >= p[PLCsrt]) and (current_time <= p[PLCfin])); // PLC on or off?
+
+    // Lumen exchange (send Ca info for fx_ap and fx_ba, receive back volume)
+    if (p[fluidFlow] != 0) { lumen_exchange(); }
 
     if (delta_time != prev_delta_time) { // recalculate A matrix if time step changed
       sparseA = sparseMass + (delta_time * sparseStiff);
@@ -606,5 +770,5 @@ void cCell_calcium::save_results(std::ofstream& data_file, int var)
   float* fbuf = new float[np];
   for (int n = 0; n < np; n++) fbuf[n] = solvec[var * np + n]; // convert to float for reduced file size
   data_file.write(reinterpret_cast<char*>(fbuf), np * sizeof(float));
-  delete (fbuf);
+  delete[] fbuf;
 }

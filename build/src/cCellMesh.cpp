@@ -25,6 +25,7 @@ cCellMesh::cCellMesh(const std::string mesh_name, cCell_calcium* p)
   parent->out << "<CellMesh> reading mesh file " + id << std::endl;
   utils::read_mesh(id, mesh_vals, parent->out);
   mesh_calcs();
+  identify_common_apical_triangles();
 }
 
 cCellMesh::~cCellMesh() {}
@@ -179,6 +180,50 @@ void cCellMesh::calc_dfb()
     e_dfb(n) = (n_dfb(mesh_vals.tetrahedrons(n, 0)) + n_dfb(mesh_vals.tetrahedrons(n, 1)) +
                 n_dfb(mesh_vals.tetrahedrons(n, 2)) + n_dfb(mesh_vals.tetrahedrons(n, 3))) /
                4.0;
+  }
+}
+
+void cCellMesh::identify_common_apical_triangles()
+{
+  parent->out << "<CellMesh> building common apical triangles list" << std::endl;
+  // NOTE: this could be a feature of the mesh (i.e. included in the mesh file)
+
+  common_apical_triangles.resize(apical_triangles_count, Eigen::NoChange);
+
+  // mask of which triangles are apical
+  std::vector<int> is_apical(mesh_vals.surface_triangles_count, 0);
+  std::vector<int> is_apical_index(mesh_vals.surface_triangles_count, 0);
+  for (int i = 0; i < apical_triangles_count; i++) {
+    int this_tri = apical_triangles(i);
+    is_apical[this_tri] = 1;
+    is_apical_index[this_tri] = i;
+  }
+
+  // record which apical triangles have been included from the common triangles list,
+  // so can add any remaining apical triangles to the list
+  std::vector<int> apical_mask(apical_triangles_count, 0);
+
+  // start with common triangles that are also apical triangles
+  int count = 0;
+  for (int i = 0; i < common_triangles_count; i++) {
+    int this_tri = common_triangles(i, tTri);
+    if (is_apical[this_tri]) {
+      int apical_index = is_apical_index[this_tri];
+      apical_mask[apical_index] = 1;
+      for (int j = 0; j < CCONNCOUNT; j++) { common_apical_triangles(count, j) = common_triangles(i, j); }
+      count++;
+    }
+  }
+  parent->out << "<CellMesh> apical triangles common with other cells: " << count << std::endl;
+
+  // now add on the apical triangles not in the common triangles list
+  for (int i = 0; i < apical_triangles_count; i++) {
+    if (not apical_mask[i]) {
+      common_apical_triangles(count, tTri) = apical_triangles(i);
+      common_apical_triangles(count, oCell) = parent->cell_number - 1; // needs to be zero-indexed
+      common_apical_triangles(count, oTri) = apical_triangles(i);
+      count++;
+    }
   }
 }
 

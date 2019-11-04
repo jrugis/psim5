@@ -24,7 +24,7 @@ class cLumenTree {
   std::ofstream* out;
   int points_count, segments_count; // the number of points and segments in the lumen tree
   MatrixN3d points;                 // 3x coordinate
-  MatrixN2i segments;                // line segment indices, 2x points
+  MatrixN2i segments;               // line segment indices, 2x points
 
   void get_segments();
   void print_info();

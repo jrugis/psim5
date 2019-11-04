@@ -19,6 +19,12 @@ totalT  0.1
 Tstride 1
 #----------------------------------------------------
 #
+# Enable coupled calcium - fluid flow model:
+#   (0 = disable fluid flow, 1 = enable fluid flow)
+#
+fluidFlow 0
+#----------------------------------------------------
+#
 # PLC start time(sec), PLC finish time(sec)
 #       1      2      3      4      5      6      7
 PLCsrt  1000.0

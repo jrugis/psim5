@@ -11,6 +11,7 @@
 #include <fstream>
 #include <string>
 
+#include "cLumen.hpp"
 #include "global_defs.hpp"
 
 class cAcinus {
@@ -26,8 +27,10 @@ class cAcinus {
   double p[PCOUNT]; // the calcium model parameters array
   // int my_rank, cell_rank, cell_count, lumen_rank;
   int my_rank, cell_rank, cell_count;
+  cLumen* lumen;
 
-  double snd_recv(double t, double dt);
+  void snd(double t, double dt);
+  double recv();
 };
 
 #endif /* CACINUS_H_ */

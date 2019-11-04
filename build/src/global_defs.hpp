@@ -25,6 +25,7 @@
 #define MPI_NODES_ABORT -102
 #define ACINUS_CELL_TAG 400
 #define CELL_CELL_TAG 401
+#define LUMEN_CELL_TAG 402
 
 // mpi shutdown on error
 #define mpi_abort(err)                                                \
@@ -68,6 +69,7 @@ enum calcium_parameters {
   delT,
   totalT,
   Tstride,
+  fluidFlow,
   PLCsrt,
   PLCfin,
   APICALds,
@@ -114,6 +116,9 @@ enum calcium_parameters {
 //************************************************************************
 // the fluid flow model parameters
 enum fluid_flow_parameters {
+  odeSolver,
+  odeSolverAbsTol,
+  odeSolverRelTol,
   aNkcc1,
   a1,
   a2,
@@ -150,12 +155,16 @@ enum fluid_flow_parameters {
   Ke,
   HCO3e,
   CO2e,
-  Hl,
   CO2l,
   Hy,
   La,
   Lb,
   Lt,
+  He,
+  Ie,
+  Hye,
+  St,
+  wl,
   FPCOUNT
 };
 
@@ -192,8 +201,8 @@ struct sMeshVals {
 // thermodynamic constants
 #define R 8.314462100000000
 #define T 310
-#define F 9.645833650000000e4
-#define RTF 26.721207772435513
+#define CONST_F 9.648533650000000e4
+#define RTF 26.713730236096550
 
 //************************************************************************
 // other constants

@@ -18,7 +18,9 @@
 // one acinus + seven cells (for now, UNTIL WE ADD SOME MORE)
 #define ACINUS_RANK 0
 #define CELLS_RANK 1
-#define LUMEN_RANK (CELLS_RANK + CELLS_COUNT)
+//#define LUMEN_RANK (CELLS_RANK + CELLS_COUNT)
+// Lumen running on same rank as Acinus, can be changed later if needed
+#define LUMEN_RANK 0
 //#define MPI_NODES (CELLS_COUNT + 2)
 #define MPI_NODES (CELLS_COUNT + 1)
 
@@ -62,7 +64,7 @@ int main(int argc, char** args)
   //	}
   // OR an mpi process for cellular calcium.
   else {
-    cCell_calcium* cell = new cCell_calcium(host_name, commRank, ACINUS_RANK);
+    cCell_calcium* cell = new cCell_calcium(host_name, commRank, ACINUS_RANK, LUMEN_RANK);
     cell->run();
     delete cell;
   }
