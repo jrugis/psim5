@@ -5,30 +5,36 @@
  *			Author: jrugis
  */
 
+#include <chrono>
+#include <cmath>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <string>
-#include <vector>
-#include <cmath>
 #include <utility>
-#include <chrono>
-#include <iomanip>
+#include <vector>
 
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/trim.hpp>
 
-#include "global_defs.hpp"
-#include "utils.hpp"
 #include "cCVode.hpp"
 #include "cLSODA.hpp"
 #include "cLumen.hpp"
 #include "global_defs.hpp"
 #include "utils.hpp"
 
-
-cLumen::cLumen(const std::string host_name, int rank, int c_rank, int c_count) :
-    id("l1"), my_rank(rank), cell_rank(c_rank), cell_count(c_count), solver_initialised(false),
-    tstride(1), step(0), solver_flag(-1), cvode_solver(nullptr), lsoda_solver(nullptr) {
+cLumen::cLumen(const std::string host_name, int rank, int c_rank, int c_count)
+  : id("l1"),
+    my_rank(rank),
+    cell_rank(c_rank),
+    cell_count(c_count),
+    solver_initialised(false),
+    tstride(1),
+    step(0),
+    solver_flag(-1),
+    cvode_solver(nullptr),
+    lsoda_solver(nullptr)
+{
   // file for storing standard output
   out.open(id + ".out");
   out << std::fixed << std::setprecision(6);
@@ -36,20 +42,20 @@ cLumen::cLumen(const std::string host_name, int rank, int c_rank, int c_count) :
   out << "<Lumen> host_name: " << host_name << std::endl;
 }
 
-cLumen::~cLumen() {
+cLumen::~cLumen()
+{
   out.close();
   vars_file.close();
   if (solver_initialised) {
-    if (solver_flag == 0) {
-      delete cvode_solver;
-    }
+    if (solver_flag == 0) { delete cvode_solver; }
     else if (solver_flag == 1) {
       delete lsoda_solver;
     }
   }
 }
 
-void cLumen::init(int tstride_) {
+void cLumen::init(int tstride_)
+{
   // file for storing results (all variable values)
   vars_file.open(id + "_results.dat");
   vars_file << std::scientific << std::setprecision(15);
@@ -64,7 +70,8 @@ void cLumen::init(int tstride_) {
   init_solver();
 }
 
-void cLumen::init_solver() {
+void cLumen::init_solver()
+{
   // which solver to use
   solver_flag = static_cast<int>(p[odeSolver]);
 
@@ -83,7 +90,8 @@ void cLumen::init_solver() {
   solver_initialised = true;
 }
 
-void cLumen::initx() {
+void cLumen::initx()
+{
   // load initial conditions
   out << "<Lumen> intialising variable matrices" << std::endl;
 
@@ -91,12 +99,10 @@ void cLumen::initx() {
   ffvars = num_compartments * LUMENALVARS + cell_count * INTRAVARS;
   x_ion.resize(ffvars, Eigen::NoChange);
   out << "<Lumen> number of variables: " << ffvars << std::endl;
-  
+
   // load the initial conditions input file
   std::ifstream icfile("flow_init.dat");
-  if (not icfile.is_open()) {
-    utils::fatal_error("could not open flow_init.dat", out);
-  }
+  if (not icfile.is_open()) { utils::fatal_error("could not open flow_init.dat", out); }
 
   std::string line;
   int count = 0;
@@ -104,16 +110,14 @@ void cLumen::initx() {
     // remove comments
     if (line.data()[0] == '#') continue;
     int ci = line.find_first_of("#");
-	if (ci > 0) line = line.substr(0, ci);
+    if (ci > 0) line = line.substr(0, ci);
 
     x_ion(count++) = std::stod(line);
   }
 
   icfile.close();
 
-  if (count != ffvars) {
-    utils::fatal_error("not enough lines in flow_init.dat", out);
-  }
+  if (count != ffvars) { utils::fatal_error("not enough lines in flow_init.dat", out); }
 
   // set up working arrays
   JtNad_tmp.resize(num_compartments, Eigen::NoChange);
@@ -137,8 +141,8 @@ void cLumen::initx() {
   QwCl.resize(num_compartments, num_compartments);
 }
 
-
-void cLumen::prep_cell_calcium() {
+void cLumen::prep_cell_calcium()
+{
   out << "<Lumen> exchanging info with cells" << std::endl;
 
   // receive connectivity information from cells
@@ -164,20 +168,16 @@ void cLumen::prep_cell_calcium() {
     // initialise exchange buffer with correct size
     cells_exchange_buffer[i].resize(num_neigh + 1);
   }
-  
+
   // echo connectivity information
-  for (std::vector<std::vector<int> >::size_type i = 0; i < neigh.size(); i++) {
+  for (std::vector<std::vector<int>>::size_type i = 0; i < neigh.size(); i++) {
     out << "<Lumen> neigh(" << i + 1 << "):";
-    for (std::vector<int>::size_type j = 0; j < neigh[i].size(); j++) {
-      out << " " << neigh[i][j] + 1;
-    }
+    for (std::vector<int>::size_type j = 0; j < neigh[i].size(); j++) { out << " " << neigh[i][j] + 1; }
     out << std::endl;
   }
-  for (std::vector<std::vector<int> >::size_type i = 0; i < neigh_clust.size(); i++) {
+  for (std::vector<std::vector<int>>::size_type i = 0; i < neigh_clust.size(); i++) {
     out << "<Lumen> neigh_clust(" << i + 1 << "):";
-    for (std::vector<int>::size_type j = 0; j < neigh_clust[i].size(); j++) {
-      out << " " << neigh_clust[i][j] + 1;
-    }
+    for (std::vector<int>::size_type j = 0; j < neigh_clust[i].size(); j++) { out << " " << neigh_clust[i][j] + 1; }
     out << std::endl;
   }
   out << "<Lumen> number of lumenal compartments: " << num_compartments << std::endl;
@@ -203,7 +203,7 @@ void cLumen::prep_cell_calcium() {
     int num_neigh = neigh[c_no].size();
     for (int j = 0; j < num_neigh; j++) {
       int ngh = neigh[c_no][j];
-      Sa_p_full(c_no, ngh) = apical_area_ratios[c_no][j];  // ratio of shared apical area with this neighbour to full apical area
+      Sa_p_full(c_no, ngh) = apical_area_ratios[c_no][j]; // ratio of shared apical area with this neighbour to full apical area
     }
   }
 
@@ -215,26 +215,23 @@ void cLumen::prep_cell_calcium() {
   }
 }
 
-void cLumen::load_adjacency_matrix() {
+void cLumen::load_adjacency_matrix()
+{
   out << "<Lumen> loading adjacency matrix" << std::endl;
 
   adj.resize(num_compartments, num_compartments);
 
   std::ifstream adj_file("flow_adj.dat");
-  if (not adj_file.is_open()) {
-    utils::fatal_error("could not open flow_adj.dat", out);
-  }
+  if (not adj_file.is_open()) { utils::fatal_error("could not open flow_adj.dat", out); }
 
   std::string line;
   for (int i = 0; i < num_compartments; i++) {
     if (getline(adj_file, line)) {
-      line = boost::trim_right_copy(line);  // remove trailing whitespace
-      std::vector<std::string> tokens; 
+      line = boost::trim_right_copy(line); // remove trailing whitespace
+      std::vector<std::string> tokens;
       boost::split(tokens, line, boost::is_any_of(" "), boost::token_compress_on);
       if (static_cast<int>(tokens.size()) == num_compartments) {
-        for (int j = 0; j < num_compartments; j++) {
-          adj(i, j) = std::stoi(tokens[j]);
-        }
+        for (int j = 0; j < num_compartments; j++) { adj(i, j) = std::stoi(tokens[j]); }
       }
       else {
         utils::fatal_error("wrong number of elements in flow_adj.dat on line " + std::to_string(i + 1), out);
@@ -251,12 +248,13 @@ void cLumen::load_adjacency_matrix() {
   out << adj << std::endl;
 }
 
-void cLumen::receive_ca_inputs() {
+void cLumen::receive_ca_inputs()
+{
   // receive Ca inputs (non-blocking)
   std::vector<MPI_Request> recv_requests(cell_count);
   for (int i = 0; i < cell_count; i++) {
-    MPI_CHECK(MPI_Irecv(cells_exchange_buffer[i].data(), cells_exchange_buffer[i].size(), MPI_DOUBLE,
-          cell_rank + i, LUMEN_CELL_TAG, MPI_COMM_WORLD, &recv_requests[i]));
+    MPI_CHECK(MPI_Irecv(cells_exchange_buffer[i].data(), cells_exchange_buffer[i].size(), MPI_DOUBLE, cell_rank + i,
+                        LUMEN_CELL_TAG, MPI_COMM_WORLD, &recv_requests[i]));
   }
 
   // wait for data to come in
@@ -264,7 +262,8 @@ void cLumen::receive_ca_inputs() {
   MPI_CHECK(MPI_Waitall(cell_count, recv_requests.data(), recv_statuses.data()));
 }
 
-void cLumen::iterate(double t, double dt) {
+void cLumen::iterate(double t, double dt)
+{
   step++;
   out << "<Lumen> step: " << step << " current_time: " << t << "s";
   out << " delta_time: " << dt << "s" << std::endl;
@@ -286,40 +285,36 @@ void cLumen::iterate(double t, double dt) {
   for (int i = 0; i < cell_count; i++) {
     int dest = cell_rank + i;
     int volume_index = i * INTRAVARS + Vol;
-    cell_volume_terms[2 * i    ] = x_ion(volume_index);
+    cell_volume_terms[2 * i] = x_ion(volume_index);
     cell_volume_terms[2 * i + 1] = x_ion_dot(volume_index);
     MPI_CHECK(MPI_Isend(&cell_volume_terms[2 * i], 2, MPI_DOUBLE, dest, LUMEN_CELL_TAG, MPI_COMM_WORLD, &send_requests[i]));
   }
 
   // save results (while waiting for sends to complete)
-  if(step % tstride == 0) {
-    save_results();
-  }
+  if (step % tstride == 0) { save_results(); }
 
   // wait for all sends to complete
   std::vector<MPI_Status> send_statuses(cell_count);
   MPI_CHECK(MPI_Waitall(cell_count, send_requests.data(), send_statuses.data()));
 }
 
-void cLumen::save_results() {
+void cLumen::save_results()
+{
   // fluid flow rate
   double flow_rate = compute_flow_rate();
   out << "DEBUG: FLUID FLOW RATE = " << flow_rate << std::endl;
 
   // save to file, the 113 variables then the flow rate
-  for (int i = 0; i < ffvars; i++) {
-    vars_file << x_ion(i) << " ";
-  }
+  for (int i = 0; i < ffvars; i++) { vars_file << x_ion(i) << " "; }
   vars_file << flow_rate << std::endl;
 }
 
-void cLumen::solve_fluid_flow(double t, double dt) {
+void cLumen::solve_fluid_flow(double t, double dt)
+{
   auto start = std::chrono::system_clock::now();
 
   // call the solver
-  if (solver_flag == 0) {
-    cvode_solver->run(t, t + dt, x_ion);
-  }
+  if (solver_flag == 0) { cvode_solver->run(t, t + dt, x_ion); }
   else if (solver_flag == 1) {
     lsoda_solver->run(t, t + dt, x_ion);
   }
@@ -329,13 +324,14 @@ void cLumen::solve_fluid_flow(double t, double dt) {
 
   auto end = std::chrono::system_clock::now();
   std::chrono::duration<double> elapsed = end - start;
-  out << "<Lumen> solver duration: " << elapsed.count() << "s"<< std::endl;
+  out << "<Lumen> solver duration: " << elapsed.count() << "s" << std::endl;
 }
 
-void cLumen::fluid_flow_function(double t, MatrixN1d &x, MatrixN1d &xdot) {
+void cLumen::fluid_flow_function(double t, MatrixN1d& x, MatrixN1d& xdot)
+{
   // arrange inputs (matlab var.m)
   var(x);
-  
+
   // Basolateral fluxes and Membrane Potentials
   fx_ba();
 
@@ -362,11 +358,12 @@ void cLumen::fluid_flow_function(double t, MatrixN1d &x, MatrixN1d &xdot) {
     xdot(index++) = JtKd(i, i) + QwK.col(i).sum() - Qtotd.col(i).sum() * Kld(i, i);
   }
   for (int i = 0; i < num_compartments; i++) {
-    xdot(index++) = - JCld(i, i) + QwCl.col(i).sum() - Qtotd.col(i).sum() * Clld(i, i);
+    xdot(index++) = -JCld(i, i) + QwCl.col(i).sum() - Qtotd.col(i).sum() * Clld(i, i);
   }
 }
 
-void cLumen::matrix_add_upper_to_lower(Array2Cells &mat) {
+void cLumen::matrix_add_upper_to_lower(Array2Cells& mat)
+{
   // mat = (mat - triu(mat)) + triu(mat)';
   int m = mat.rows();
   int n = mat.cols();
@@ -378,20 +375,20 @@ void cLumen::matrix_add_upper_to_lower(Array2Cells &mat) {
   }
 }
 
-void cLumen::matrix_move_upper_to_lower(Array2Cells &mat) {
+void cLumen::matrix_move_upper_to_lower(Array2Cells& mat)
+{
   // mat = triu(mat)';
   int m = mat.rows();
   int n = mat.cols();
   for (int i = 0; i < m; i++) {
-    for (int j = i + 1; j < n; j++) {
-      mat(j, i) = mat(i, j);
-    }
+    for (int j = i + 1; j < n; j++) { mat(j, i) = mat(i, j); }
   }
 }
 
-void cLumen::lum_adj() {
+void cLumen::lum_adj()
+{
   // This function uses the adjacency matrix to calculate the lumenal structure
-  // equations. 
+  // equations.
   // This is a dirty function and should be re-written.
 
   // add upper to lower triangles, zeroing upper
@@ -407,12 +404,10 @@ void cLumen::lum_adj() {
 
   // find locations of non-zero elements in Qtot transposed
   // TODO: why transposed if we switch ordering later??
-  std::vector<std::pair<int, int> > nonzeros;
+  std::vector<std::pair<int, int>> nonzeros;
   for (int i = 0; i < Qtot.rows(); i++) {
     for (int j = 0; j < Qtot.cols(); j++) {
-      if (Qtot(i, j) != 0) {
-        nonzeros.push_back(std::make_pair(i, j));
-      }
+      if (Qtot(i, j) != 0) { nonzeros.push_back(std::make_pair(i, j)); }
     }
   }
 
@@ -443,7 +438,7 @@ void cLumen::lum_adj() {
     JCld.col(i) = adj.col(i).cast<double>() * JCld_tmp;
   }
 
-  // precalculate the water/ion influx  
+  // precalculate the water/ion influx
   QwNa = Qtotd * Nald;
   QwK = Qtotd * Kld;
   QwCl = Qtotd * Clld;
@@ -454,12 +449,13 @@ void cLumen::lum_adj() {
   }
 }
 
-void cLumen::ieq(MatrixN1d &xdot) {
+void cLumen::ieq(MatrixN1d& xdot)
+{
   // This function calculates the differential equations of the intracellular
   // ionic concentrations and the membrane potentials of any given cell
   // using the int matrix of seven columns
   // (that represent each cell) and 8 rows (representing concentrations and PM
-  // potentials along with cell volume). 
+  // potentials along with cell volume).
   // The order is in the intracellular_variables enum.
 
   int index = 0;
@@ -471,14 +467,17 @@ void cLumen::ieq(MatrixN1d &xdot) {
     xdot(index++) = Jb(c_no, Jwater);
 
     // d[Na+]i/dt
-    xdot(index++) = (Jb(c_no, JNkcc1) - 3.0 * Jb(c_no, JNaK) + Jb(c_no, JNhe1) - Jb(c_no, JAe4) - 
-        Jb(c_no, Jwater) * intra(c_no, Naplus)) / intra(c_no, Vol);
+    xdot(index++) =
+      (Jb(c_no, JNkcc1) - 3.0 * Jb(c_no, JNaK) + Jb(c_no, JNhe1) - Jb(c_no, JAe4) - Jb(c_no, Jwater) * intra(c_no, Naplus)) /
+      intra(c_no, Vol);
 
     // d[K+]i/dt
-    xdot(index++) = (Jb(c_no, JNkcc1) + 2.0 * Jb(c_no, JNaK) - Jb(c_no, JK) - Jb(c_no, Jwater) * intra(c_no, Kplus)) / intra(c_no, Vol);
+    xdot(index++) =
+      (Jb(c_no, JNkcc1) + 2.0 * Jb(c_no, JNaK) - Jb(c_no, JK) - Jb(c_no, Jwater) * intra(c_no, Kplus)) / intra(c_no, Vol);
 
     // d[Cl-]i/dt
-    xdot(index++) = (2.0 * Jb(c_no, JNkcc1) + Jb(c_no, JAe4) + JCL(c_no) - Jb(c_no, Jwater) * intra(c_no, Clminus)) / intra(c_no, Vol);
+    xdot(index++) =
+      (2.0 * Jb(c_no, JNkcc1) + Jb(c_no, JAe4) + JCL(c_no) - Jb(c_no, Jwater) * intra(c_no, Clminus)) / intra(c_no, Vol);
 
     // d[HCO3-]i/dt
     xdot(index++) = (Jb(c_no, JBB) - 2.0 * Jb(c_no, JAe4) - Jb(c_no, Jwater) * intra(c_no, HCO3minus)) / intra(c_no, Vol);
@@ -487,14 +486,15 @@ void cLumen::ieq(MatrixN1d &xdot) {
     xdot(index++) = (Jb(c_no, JBB) - Jb(c_no, JNhe1) - Jb(c_no, Jwater) * intra(c_no, Hplus)) / intra(c_no, Vol);
 
     // dVa/dt
-    xdot(index++) = - JCL(c_no) - (JtNa.row(c_no).sum() + JtK.row(c_no).sum());
+    xdot(index++) = -JCL(c_no) - (JtNa.row(c_no).sum() + JtK.row(c_no).sum());
 
     // dVb/dt
-    xdot(index++) = - Jb(c_no, JNaK) - Jb(c_no, JK) + JtNa.row(c_no).sum() + JtK.row(c_no).sum();
+    xdot(index++) = -Jb(c_no, JNaK) - Jb(c_no, JK) + JtNa.row(c_no).sum() + JtK.row(c_no).sum();
   }
 }
 
-void cLumen::fx_ba() {
+void cLumen::fx_ba()
+{
   // This function takes as an input the intracellular variables of the cell model and the Ca
   // in order to calculate the membrane ionic fluxes, and the flow rate into the cell, at the
   // basolateral side of the cells.
@@ -517,20 +517,24 @@ void cLumen::fx_ba() {
     Jb(cell_no, JK) = p[GK] * PK * (intra(cell_no, 7) - VK) / CONST_F;
 
     // 3Na+/2K+ ATPases
-    Jb(cell_no, JNaK) = basal_areas[cell_no] * p[aNaK] * (p[r] * pow(p[Ke], 2) * pow(intra(cell_no, 1), 3) / 
-        (pow(p[Ke], 2) + p[alpha1] * pow(intra(cell_no, 1), 3)));
+    Jb(cell_no, JNaK) =
+      basal_areas[cell_no] * p[aNaK] *
+      (p[r] * pow(p[Ke], 2) * pow(intra(cell_no, 1), 3) / (pow(p[Ke], 2) + p[alpha1] * pow(intra(cell_no, 1), 3)));
 
     // Na+ K+ 2Cl- Cotransporters
-    Jb(cell_no, JNkcc1) = p[aNkcc1] * basal_areas[cell_no] * (p[a1] - p[a2] * intra(cell_no, 1) * intra(cell_no, 2) *
-        pow(intra(cell_no, 3), 2)) / (p[a3] + p[a4] * intra(cell_no, 1) * intra(cell_no, 2) * pow(intra(cell_no, 3), 2));
+    Jb(cell_no, JNkcc1) = p[aNkcc1] * basal_areas[cell_no] *
+                          (p[a1] - p[a2] * intra(cell_no, 1) * intra(cell_no, 2) * pow(intra(cell_no, 3), 2)) /
+                          (p[a3] + p[a4] * intra(cell_no, 1) * intra(cell_no, 2) * pow(intra(cell_no, 3), 2));
 
     // Na+-2HCO3-/Cl- Anion Exchanger 4
-    Jb(cell_no, JAe4) = basal_areas[cell_no] * p[G4] * ((p[Cle] / (p[Cle] + p[KCl])) * (intra(cell_no, 1) / 
-          (intra(cell_no, 1) + p[KNa])) * pow((intra(cell_no, 4) / (intra(cell_no, 4) + p[KB])), 2));
+    Jb(cell_no, JAe4) = basal_areas[cell_no] * p[G4] *
+                        ((p[Cle] / (p[Cle] + p[KCl])) * (intra(cell_no, 1) / (intra(cell_no, 1) + p[KNa])) *
+                         pow((intra(cell_no, 4) / (intra(cell_no, 4) + p[KB])), 2));
 
     // Na+/H+ Antiporter 1
-    Jb(cell_no, JNhe1) = basal_areas[cell_no] * p[G1] * ((p[Nae] / (p[Nae] + p[KNa])) * (intra(cell_no, 5) /
-          (p[KH] + intra(cell_no, 5))) - (intra(cell_no, 1) / (intra(cell_no, 1) + p[KNa])) * (p[He] / (p[KH] + p[He])));
+    Jb(cell_no, JNhe1) = basal_areas[cell_no] * p[G1] *
+                         ((p[Nae] / (p[Nae] + p[KNa])) * (intra(cell_no, 5) / (p[KH] + intra(cell_no, 5))) -
+                          (intra(cell_no, 1) / (intra(cell_no, 1) + p[KNa])) * (p[He] / (p[KH] + p[He])));
 
     // CAIV Intracellular Carbonic Anhydrases
     Jb(cell_no, JBB) = intra(cell_no, 0) * p[GB] * (p[kp] * p[CO20] - p[kn] * intra(cell_no, 4) * intra(cell_no, 5));
@@ -540,11 +544,12 @@ void cLumen::fx_ba() {
   }
 }
 
-void cLumen::fx_ap() {
-  // This function takes as an input the intracellular and luminal variables 
-  // of the cell model and the Ca in order to calculate the apical 
-  // mebrane ionic fluxes, and the flow rate out and into the lumen, 
-  // of any particular cell. 
+void cLumen::fx_ap()
+{
+  // This function takes as an input the intracellular and luminal variables
+  // of the cell model and the Ca in order to calculate the apical
+  // mebrane ionic fluxes, and the flow rate out and into the lumen,
+  // of any particular cell.
 
   JCl.setZero();
   JtNa.setZero();
@@ -558,7 +563,7 @@ void cLumen::fx_ap() {
     int num_neigh = neigh[c_no].size();
     for (int j = 0; j < num_neigh; j++) {
       int ngh = neigh[c_no][j];
-      double Sa_p = apical_area_ratios[c_no][j];  // ratio of shared apical area with this neighbour to full apical area
+      double Sa_p = apical_area_ratios[c_no][j]; // ratio of shared apical area with this neighbour to full apical area
 
       // Tight Junctional Membrane Potential
       double Vt = intra(c_no, 6) - intra(c_no, 7);
@@ -590,7 +595,8 @@ void cLumen::fx_ap() {
   }
 }
 
-void cLumen::var(MatrixN1d &x) {
+void cLumen::var(MatrixN1d& x)
+{
   // ordering of variables in the x vector is like:
   //    `INTRAVARS` intracellular vars for cell 1
   //    `INTRAVARS` intracellular vars for cell 2
@@ -604,9 +610,7 @@ void cLumen::var(MatrixN1d &x) {
   intra.setZero();
   int n = 0;
   for (int i = 0; i < cell_count; i++) {
-    for (int j = 0; j < INTRAVARS; j++) {
-      intra(i, j) = x(n++);
-    }
+    for (int j = 0; j < INTRAVARS; j++) { intra(i, j) = x(n++); }
   }
 
   // Lumenal concentration matrix
@@ -639,7 +643,8 @@ void cLumen::var(MatrixN1d &x) {
   }
 }
 
-double cLumen::compute_flow_rate() {
+double cLumen::compute_flow_rate()
+{
   // set up variable arrays
   var(x_ion);
 
@@ -651,9 +656,7 @@ double cLumen::compute_flow_rate() {
 
   // Il minus Ii
   Array2Cells IlminIi;
-  for (int i = 0; i < cell_count; i++) {
-    IlminIi.row(i) = Il.row(i) - Ii(i);
-  }
+  for (int i = 0; i < cell_count; i++) { IlminIi.row(i) = Il.row(i) - Ii(i); }
 
   // construct Qa and Qt arrays
   Array2Cells Qa = Sa_p_full * p[La] * IlminIi;

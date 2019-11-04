@@ -15,47 +15,42 @@
  * Based on CVODE example problem.
  * -----------------------------------------------------------------*/
 
-#include <string>
 #include <fstream>
+#include <string>
 
 #include <cvode/cvode.h>               /* prototypes for CVODE fcts., consts.  */
 #include <nvector/nvector_serial.h>    /* access to serial N_Vector            */
-#include <sunmatrix/sunmatrix_dense.h> /* access to dense SUNMatrix            */
-#include <sunlinsol/sunlinsol_dense.h> /* access to dense SUNLinearSolver      */
 #include <sundials/sundials_types.h>   /* defs. of realtype, sunindextype      */
+#include <sunlinsol/sunlinsol_dense.h> /* access to dense SUNLinearSolver      */
+#include <sunmatrix/sunmatrix_dense.h> /* access to dense SUNMatrix            */
 
+#include "cCVode.hpp"
+#include "cLumen.hpp"
 #include "global_defs.hpp"
 #include "utils.hpp"
-#include "cLumen.hpp"
-#include "cCVode.hpp"
-
 
 /*
- * f routine. Compute function f(t,y). 
+ * f routine. Compute function f(t,y).
  */
 
-static int f(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
-  cLumen* pt_cLumen = static_cast<cLumen *>(user_data);
+static int f(realtype t, N_Vector y, N_Vector ydot, void* user_data)
+{
+  cLumen* pt_cLumen = static_cast<cLumen*>(user_data);
   int nvars = pt_cLumen->get_nvars();
 
   MatrixN1d ymat;
   ymat.resize(nvars, Eigen::NoChange);
-  for (int i = 0; i < nvars; i++) {
-    ymat(i) = NV_Ith_S(y, i);
-  }
+  for (int i = 0; i < nvars; i++) { ymat(i) = NV_Ith_S(y, i); }
 
   MatrixN1d ydotmat;
   ydotmat.resize(nvars, Eigen::NoChange);
-  
+
   pt_cLumen->fluid_flow_function(t, ymat, ydotmat);
-  
-  for (int i = 0; i < nvars; i++) {
-    NV_Ith_S(ydot, i) = ydotmat(i);
-  }
 
-  return(0);
+  for (int i = 0; i < nvars; i++) { NV_Ith_S(ydot, i) = ydotmat(i); }
+
+  return (0);
 }
-
 
 /*
  *-------------------------------
@@ -63,9 +58,9 @@ static int f(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
  *-------------------------------
  */
 
-cCVode::cCVode(cLumen* lumen_, std::ofstream& out_, realtype abstol_, realtype reltol_) :
-    lumen(lumen_), out(out_), initialised(false), nvars(0), abstol(abstol_),
-    reltol(reltol_) {
+cCVode::cCVode(cLumen* lumen_, std::ofstream& out_, realtype abstol_, realtype reltol_)
+  : lumen(lumen_), out(out_), initialised(false), nvars(0), abstol(abstol_), reltol(reltol_)
+{
   out << std::scientific;
   out << "<CVode>: creating CVode solver" << std::endl;
   out << " tolerances are " << abstol << " (absolute) and ";
@@ -77,7 +72,8 @@ cCVode::cCVode(cLumen* lumen_, std::ofstream& out_, realtype abstol_, realtype r
   cvode_mem = NULL;
 }
 
-cCVode::~cCVode() {
+cCVode::~cCVode()
+{
   if (initialised) {
     /* Free y vector */
     N_VDestroy(y);
@@ -93,25 +89,24 @@ cCVode::~cCVode() {
   }
 }
 
-void cCVode::init(MatrixN1d& yini) {
+void cCVode::init(MatrixN1d& yini)
+{
   int retval;
   nvars = yini.rows();
   realtype t0 = 0.0;
 
   /* Create serial vector of length NEQ for I.C. */
   y = N_VNew_Serial(nvars);
-  check_retval(static_cast<void *>(y), "N_VNew_Serial", 0);
+  check_retval(static_cast<void*>(y), "N_VNew_Serial", 0);
 
   /* Initialize y */
-  for (sunindextype i = 0; i < nvars; i++) {
-    NV_Ith_S(y, i) = yini(i);
-  }
+  for (sunindextype i = 0; i < nvars; i++) { NV_Ith_S(y, i) = yini(i); }
 
-  /* Call CVodeCreate to create the solver memory and specify the 
+  /* Call CVodeCreate to create the solver memory and specify the
    * Backward Differentiation Formula */
   cvode_mem = CVodeCreate(CV_BDF);
-  check_retval(static_cast<void *>(cvode_mem), "CVodeCreate", 0);
-  
+  check_retval(static_cast<void*>(cvode_mem), "CVodeCreate", 0);
+
   /* Call CVodeInit to initialize the integrator memory and specify the
    * user's right hand side function in y'=f(t,y), the inital time T0, and
    * the initial dependent variable vector y. */
@@ -124,16 +119,16 @@ void cCVode::init(MatrixN1d& yini) {
   check_retval(&retval, "CVodeSStolerances", 1);
 
   /* Call CVodeSetUserData */
-  retval = CVodeSetUserData(cvode_mem, static_cast<void *>(lumen));
+  retval = CVodeSetUserData(cvode_mem, static_cast<void*>(lumen));
   check_retval(&retval, "CVodeSetUserData", 1);
 
   /* Create dense SUNMatrix for use in linear solves */
   A = SUNDenseMatrix(nvars, nvars);
-  check_retval(static_cast<void *>(A), "SUNDenseMatrix", 0);
+  check_retval(static_cast<void*>(A), "SUNDenseMatrix", 0);
 
   /* Create dense SUNLinearSolver object for use by CVode */
   LS = SUNLinSol_Dense(y, A);
-  check_retval(static_cast<void *>(LS), "SUNLinSol_Dense", 0);
+  check_retval(static_cast<void*>(LS), "SUNLinSol_Dense", 0);
 
   /* Call CVodeSetLinearSolver to attach the matrix and linear solver to CVode */
   retval = CVodeSetLinearSolver(cvode_mem, LS, A);
@@ -142,13 +137,12 @@ void cCVode::init(MatrixN1d& yini) {
   initialised = true;
 }
 
-void cCVode::run(realtype t, realtype tout, MatrixN1d& yout) {
+void cCVode::run(realtype t, realtype tout, MatrixN1d& yout)
+{
   int retval;
 
   // reinit CVode
-  for (sunindextype i = 0; i < nvars; i++) {
-    NV_Ith_S(y, i) = yout(i);
-  }
+  for (sunindextype i = 0; i < nvars; i++) { NV_Ith_S(y, i) = yout(i); }
   retval = CVodeReInit(cvode_mem, t, y);
   check_retval(&retval, "CVodeReinit", 1);
 
@@ -157,25 +151,21 @@ void cCVode::run(realtype t, realtype tout, MatrixN1d& yout) {
 
   // check for errors
   check_retval(&retval, "CVode", 1);
-  if (retval != CV_SUCCESS) {
-    utils::fatal_error("CVode did not succeed", out);
-  }
+  if (retval != CV_SUCCESS) { utils::fatal_error("CVode did not succeed", out); }
 
   /* Print some final statistics */
-//  PrintFinalStatsDetailed(cvode_mem);
+  //  PrintFinalStatsDetailed(cvode_mem);
   PrintFinalStatsBrief(cvode_mem);
 
   /* store result for passing back */
-  for (sunindextype i = 0; i < nvars; i++) {
-    yout(i) = NV_Ith_S(y, i);
-  }
+  for (sunindextype i = 0; i < nvars; i++) { yout(i) = NV_Ith_S(y, i); }
 }
 
-/* 
+/*
  * Get and print some final statistics
  */
 
-void cCVode::PrintFinalStatsBrief(void *cvode_mem)
+void cCVode::PrintFinalStatsBrief(void* cvode_mem)
 {
   long int nst, nfe;
   int retval;
@@ -189,7 +179,7 @@ void cCVode::PrintFinalStatsBrief(void *cvode_mem)
   out << "num_steps = " << nfe << " num_func_calls = " << nfe << std::endl;
 }
 
-void cCVode::PrintFinalStatsDetailed(void *cvode_mem)
+void cCVode::PrintFinalStatsDetailed(void* cvode_mem)
 {
   long int nst, nfe, nsetups, nje, nfeLS, nni, ncfn, netf, nge;
   int retval;
@@ -228,12 +218,12 @@ void cCVode::PrintFinalStatsDetailed(void *cvode_mem)
  *   opt == 1 means SUNDIALS function returns an integer value so check if
  *            retval < 0
  *   opt == 2 means function allocates memory so check if returned
- *            NULL pointer 
+ *            NULL pointer
  */
 
-void cCVode::check_retval(void *returnvalue, std::string funcname, int opt)
+void cCVode::check_retval(void* returnvalue, std::string funcname, int opt)
 {
-  int *retval;
+  int* retval;
 
   /* Check if SUNDIALS function returned NULL pointer - no memory allocated */
   if (opt == 0 && returnvalue == NULL) {
@@ -242,7 +232,7 @@ void cCVode::check_retval(void *returnvalue, std::string funcname, int opt)
 
   /* Check if retval < 0 */
   else if (opt == 1) {
-    retval = (int *) returnvalue;
+    retval = (int*)returnvalue;
     if (*retval < 0) {
       utils::fatal_error("SUNDIALS_ERROR: " + funcname + "() failed with retval = " + std::to_string(*retval), out);
     }

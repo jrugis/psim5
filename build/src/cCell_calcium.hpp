@@ -23,10 +23,10 @@ class cCellMesh;
 #define VARIABLES (DIFVARS + NONDIFVARS) // total number of node variables
 #define REF_MASS_SIZE 4                  // reference mass dimension
 
-enum model_element_values { VOL_e, RYR_e, PLC_e, MODELECOUNT };        // element volume and spatial factors
-enum model_surface_values { AREA_s, MODELSCOUNT };                     // surface triangle area
-enum model_node_values { BOOL_apical, MODELNCOUNT };                   // apical (boolean)
-enum model_surface_region_data{AREA_apical, AREA_basal, MODELSRCOUNT}; // apical and basal region surface areas
+enum model_element_values { VOL_e, RYR_e, PLC_e, MODELECOUNT };           // element volume and spatial factors
+enum model_surface_values { AREA_s, MODELSCOUNT };                        // surface triangle area
+enum model_node_values { BOOL_apical, MODELNCOUNT };                      // apical (boolean)
+enum model_surface_region_data { AREA_apical, AREA_basal, MODELSRCOUNT }; // apical and basal region surface areas
 
 // some convenience typedefs
 typedef Eigen::Array<double, Eigen::Dynamic, 1> ArrayX1C;
@@ -61,19 +61,19 @@ class cCell_calcium {
   int cell_number, acinus_rank, lumen_rank;
   cCellMesh* mesh;
   Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
-  double p[PCOUNT];       // the model parameters array
-  double fp[FPCOUNT]; // fluid flow parameters
-  std::vector<cfc> cells; // vector of connected cells and face counts
+  double p[PCOUNT];              // the model parameters array
+  double fp[FPCOUNT];            // fluid flow parameters
+  std::vector<cfc> cells;        // vector of connected cells and face counts
   std::vector<cfc> cells_apical; // vector of connected cells and face counts for apical region (fluid flow calculations)
   std::vector<double> cells_apical_area_ratios; // ratio of area of each connected apical region to total apical area
   MPI_Datatype mpi_exchange_type;
   exchange_t** exchange_send_buffer; // buffers for exchanging values between connected cells
   exchange_t** exchange_recv_buffer;
   ArrayX1C exchange_load_ip;
-  double cell_volume_terms[2];  // cell volume and its derivative, received from lumen
-  double cell_volume_term;  // derivative of cell volume divided by cell volume
-  double volume_scaling;  // scale the volume based on fluid flow model
-  double volume_at_rest;  // volume of cell at rest
+  double cell_volume_terms[2]; // cell volume and its derivative, received from lumen
+  double cell_volume_term;     // derivative of cell volume divided by cell volume
+  double volume_scaling;       // scale the volume based on fluid flow model
+  double volume_at_rest;       // volume of cell at rest
 
   Eigen::Array<double, Eigen::Dynamic, MODELECOUNT> element_data;
   Eigen::Array<double, Eigen::Dynamic, MODELSCOUNT> surface_data;

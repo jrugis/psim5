@@ -11,8 +11,8 @@
 #include <fstream>
 #include <string>
 
-#include "global_defs.hpp"
 #include "cLumen.hpp"
+#include "global_defs.hpp"
 
 class cAcinus {
   public:

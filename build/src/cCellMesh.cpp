@@ -183,7 +183,8 @@ void cCellMesh::calc_dfb()
   }
 }
 
-void cCellMesh::identify_common_apical_triangles() {
+void cCellMesh::identify_common_apical_triangles()
+{
   parent->out << "<CellMesh> building common apical triangles list" << std::endl;
   // NOTE: this could be a feature of the mesh (i.e. included in the mesh file)
 
@@ -209,9 +210,7 @@ void cCellMesh::identify_common_apical_triangles() {
     if (is_apical[this_tri]) {
       int apical_index = is_apical_index[this_tri];
       apical_mask[apical_index] = 1;
-      for (int j = 0; j < CCONNCOUNT; j++) {
-        common_apical_triangles(count, j) = common_triangles(i, j);
-      }
+      for (int j = 0; j < CCONNCOUNT; j++) { common_apical_triangles(count, j) = common_triangles(i, j); }
       count++;
     }
   }
@@ -221,7 +220,7 @@ void cCellMesh::identify_common_apical_triangles() {
   for (int i = 0; i < apical_triangles_count; i++) {
     if (not apical_mask[i]) {
       common_apical_triangles(count, tTri) = apical_triangles(i);
-      common_apical_triangles(count, oCell) = parent->cell_number - 1;  // needs to be zero-indexed
+      common_apical_triangles(count, oCell) = parent->cell_number - 1; // needs to be zero-indexed
       common_apical_triangles(count, oTri) = apical_triangles(i);
       count++;
     }

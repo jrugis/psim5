@@ -115,7 +115,7 @@ enum calcium_parameters {
 
 //************************************************************************
 // the fluid flow model parameters
-enum fluid_flow_parameters{
+enum fluid_flow_parameters {
   odeSolver,
   odeSolverAbsTol,
   odeSolverRelTol,
