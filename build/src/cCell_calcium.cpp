@@ -215,6 +215,12 @@ void cCell_calcium::make_matrices()
   // --------------------------------
   // for each volume element...
   // --------------------------------
+  element_data.col(RYR_e) =
+    Eigen::Map<Eigen::MatrixXd>(reinterpret_cast<double*>(utils::load_bin("w_RyR" + std::to_string(cell_number) + ".bin")),
+                                mesh->mesh_vals.tetrahedrons_count, 1);
+  element_data.col(PLC_e) =
+    Eigen::Map<Eigen::MatrixXd>(reinterpret_cast<double*>(utils::load_bin("w_VPLC" + std::to_string(cell_number) + ".bin")),
+                                mesh->mesh_vals.tetrahedrons_count, 1);
   for (int n = 0; n < (mesh->mesh_vals.tetrahedrons_count); n++) {
     Eigen::Matrix<int, 1, 4> vi; // tetrahedron vertex indices
     vi = mesh->mesh_vals.tetrahedrons.block<1, 4>(n, 0);
@@ -230,8 +236,8 @@ void cCell_calcium::make_matrices()
     element_data(n, VOL_e) = V; // save the tetrahedron volume
 
     // RyR and PLC spatial factors per element
-    element_data(n, RYR_e) = ((mesh->e_dfa[n] < p[d_RyR]) ? (mesh->e_dfa[n] / p[d_RyR]) : 1.0);
-    element_data(n, PLC_e) = (mesh->e_dfb[n] < p[PLCds] && mesh->e_dfa[n] > p[PLCdl]) ? 1.0 : 0.0;
+    // element_data(n, RYR_e) = ((mesh->e_dfa[n] < p[d_RyR]) ? (mesh->e_dfa[n] / p[d_RyR]) : 1.0);
+    // element_data(n, PLC_e) = (mesh->e_dfb[n] < p[PLCds] && mesh->e_dfa[n] > p[PLCdl]) ? 1.0 : 0.0;
 
     double Ic = V * p[Dc]; // diffusion coefficients
     double Ip = V * p[Dp];
@@ -279,6 +285,10 @@ void cCell_calcium::make_matrices()
     stiffce(vi(3), vi(2)) = stiffce(vi(2), vi(3));
     small_mass(vi(3), vi(2)) = small_mass(vi(2), vi(3));
   }
+  utils::save_matrix("mass_" + id + ".bin", long(np) * np * sizeof(double), reinterpret_cast<char*>(small_mass.data()));
+  utils::save_matrix("stiffc_" + id + ".bin", long(np) * np * sizeof(double), reinterpret_cast<char*>(stiffc.data()));
+  utils::save_matrix("stiffp_" + id + ".bin", long(np) * np * sizeof(double), reinterpret_cast<char*>(stiffp.data()));
+  utils::save_matrix("stiffce_" + id + ".bin", long(np) * np * sizeof(double), reinterpret_cast<char*>(stiffce.data()));
   // utils::save_matrix("tet_vol_" + id + ".bin", mesh->mesh_vals.tetrahedrons_count * sizeof(double),
   //               reinterpret_cast<char*>(element_data.col(VOL_e).data()));
 

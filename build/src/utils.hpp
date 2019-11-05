@@ -20,7 +20,8 @@ namespace utils {
   void get_parameters(const std::string file_id, int ptype, int cell_num, double* p, std::ofstream& out);
   double get_distance(const Vector3d& p, const Vector3d& v, const Vector3d& w);
   void read_mesh(const std::string file_name, sMeshVals& mesh_vals, std::ofstream& out);
-  void save_matrix(const std::string file_name, int bytes, char* data);
+  void save_matrix(const std::string file_name, long bytes, char* data);
+  char* load_bin(const std::string file_name);
 } // namespace utils
 
 #endif /* UTILS_H_ */

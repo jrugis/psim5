@@ -54,13 +54,11 @@ void cCellMesh::calc_common()
   sMeshVals other_mesh;    // other mesh values
 
   utils::calc_tri_centers(this_centers, mesh_vals.vertices, mesh_vals.surface_triangles);
-  int ci = id.find_last_of('c') + 1;               // to split the mesh id string, find the position of the last "c"
-  int this_cell = atoi(id.substr(ci).c_str()) - 1; // extract this cell index from its mesh id
   common_triangles.resize(mesh_vals.surface_triangles_count, Eigen::NoChange); // overkill size for now
   common_triangles_count = 0;
   for (int other_cell = 0; other_cell < CELLS_COUNT; other_cell++) { // check against all the other cell meshes...
-    if (other_cell == this_cell) continue;                           // don't check against itself
-    std::string other_id = id.substr(0, ci) + std::to_string(other_cell + 1); // the other mesh id
+    if (other_cell == parent->cell_number - 1) continue;             // don't check against itself
+    std::string other_id = id.substr(0, id.find("c") + 1) + std::to_string(other_cell + 1); // the other mesh id
     utils::read_mesh(other_id, other_mesh, parent->out);
     utils::calc_tri_centers(other_centers, other_mesh.vertices, other_mesh.surface_triangles);
     for (int this_tri = 0; this_tri < mesh_vals.surface_triangles_count; this_tri++) {
@@ -79,21 +77,25 @@ void cCellMesh::calc_common()
 void cCellMesh::calc_apical_basal()
 {
   // determine the apical and the apical keep-out surface triangle indices
-  MatrixN1i apical_keepout;                                                  // keep-out triangle indicies
-  apical_keepout.resize(mesh_vals.surface_triangles_count, Eigen::NoChange); // overkill size for now
-  int apical_keepout_count = 0;
+  // MatrixN1i apical_keepout;                                                  // keep-out triangle indicies
+  // apical_keepout.resize(mesh_vals.surface_triangles_count, Eigen::NoChange); // overkill size for now
+  // int apical_keepout_count = 0;
   apical_triangles.resize(mesh_vals.surface_triangles_count, Eigen::NoChange); // overkill size for now
-  apical_triangles_count = 0;
+  Eigen::Map<Eigen::MatrixXd> buf_a(
+    reinterpret_cast<double*>(utils::load_bin("w_IPR" + std::to_string(parent->cell_number) + ".bin")),
+    mesh_vals.surface_triangles_count, 1);
+    apical_triangles_count = 0;
   for (int n = 0; n < mesh_vals.surface_triangles_count; n++) {
-    double d = // triangle distance from apical
-      (n_dfa(mesh_vals.surface_triangles(n, 0)) + n_dfa(mesh_vals.surface_triangles(n, 1)) +
-       n_dfa(mesh_vals.surface_triangles(n, 2))) /
-      3.0;
-    if (d < parent->p[APICALds]) apical_triangles(apical_triangles_count++) = n;
-    if (d < (parent->p[APICALdl])) apical_keepout(apical_keepout_count++) = n;
+    //  double d = // triangle distance from apical
+    //    (n_dfa(mesh_vals.surface_triangles(n, 0)) + n_dfa(mesh_vals.surface_triangles(n, 1)) +
+    //     n_dfa(mesh_vals.surface_triangles(n, 2))) /
+    //    3.0;
+    //  if (d < parent->p[APICALds]) apical_triangles(apical_triangles_count++) = n;
+    // if (d < (parent->p[APICALdl])) apical_keepout(apical_keepout_count++) = n;
+    if (buf_a(n) == 45.0) { apical_triangles(apical_triangles_count++) = n; }
   }
   apical_triangles.conservativeResize(apical_triangles_count, 1); // actual triangles count
-  apical_keepout.conservativeResize(apical_keepout_count, 1);     // actual triangles count
+  // apical_keepout.conservativeResize(apical_keepout_count, 1);     // actual triangles count
 
   // save a list of the apical node indices (only used by post-processing plotting)
   MatrixN1i apical_nodes;                                         // apical node indices
@@ -115,16 +117,21 @@ void cCellMesh::calc_apical_basal()
   // determine the basal triangle indices by considering all surface triangles
   //	 then eliminating the common triangles and the triangles that are too close to the lumen
   basal_triangles.resize(mesh_vals.surface_triangles_count, Eigen::NoChange); // overkill size for now
-  basal_triangles.setOnes(mesh_vals.surface_triangles_count);
-  for (int n = 0; n < common_triangles_count; n++) { // eliminate the common triangles
-    basal_triangles(common_triangles(n, 0)) = 0;
-  }
-  for (int n = 0; n < apical_keepout_count; n++) { // eliminate the apical keepout triangles
-    basal_triangles(apical_keepout(n)) = 0;
-  }
-  basal_triangles_count = 0;
+  Eigen::Map<Eigen::MatrixXd> buf(
+    reinterpret_cast<double*>(utils::load_bin("w_basal" + std::to_string(parent->cell_number) + ".bin")),
+    mesh_vals.surface_triangles_count, 1);
+  // basal_triangles.setZero(mesh_vals.surface_triangles_count);
+  // basal_triangles.setOnes(mesh_vals.surface_triangles_count);
+  // for (int n = 0; n < common_triangles_count; n++) { // eliminate the common triangles
+  //  basal_triangles(common_triangles(n, 0)) = 0;
+  //}
+  // for (int n = 0; n < apical_keepout_count; n++) { // eliminate the apical keepout triangles
+  //  basal_triangles(apical_keepout(n)) = 0;
+  //}
+    basal_triangles_count = 0;
   for (int n = 0; n < mesh_vals.surface_triangles_count; n++) { // convert (in-place) what's left to a list of indices
-    if (basal_triangles(n)) { basal_triangles(basal_triangles_count++) = n; }
+    // if (basal_triangles(n)) { basal_triangles(basal_triangles_count++) = n; }
+    if (buf(n) == 1.0) { basal_triangles(basal_triangles_count++) = n; }
   }
   basal_triangles.conservativeResize(basal_triangles_count, Eigen::NoChange); // actual size
 
@@ -231,9 +238,21 @@ void cCellMesh::mesh_calcs()
 {
   parent->out << "<CellMesh> calculating derived properties... " << std::endl;
   calc_common();
-  calc_dfa();          // do this first,				distance from apical (per node and per element)
+  //###########
+  parent->out << "<CellMesh> A" << std::endl;
+  //###########
+  calc_dfa(); // do this first,				distance from apical (per node and per element)
+  //###########
+  parent->out << "<CellMesh> B" << std::endl;
+  //###########
   calc_apical_basal(); // then this,						identify apical and basal triangles
-  calc_dfb();          // finally this.				  distance from basal (per element)
+  //###########
+  parent->out << "<CellMesh> C" << std::endl;
+  //###########
+  calc_dfb(); // finally this.				  distance from basal (per element)
+  //###########
+  parent->out << "<CellMesh> D" << std::endl;
+  //###########
 }
 
 void cCellMesh::print_info()

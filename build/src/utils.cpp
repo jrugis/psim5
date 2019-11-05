@@ -182,10 +182,19 @@ void utils::read_mesh(const std::string file_name, sMeshVals& mesh_vals, std::of
   cell_file.close();
 }
 
-void utils::save_matrix(const std::string file_name, int bytes, char* data)
+void utils::save_matrix(const std::string file_name, long bytes, char* data)
 {
   std::ofstream data_file;
   data_file.open(file_name, std::ios::binary);
   data_file.write(data, bytes);
-  data_file.close();
+}
+
+char* utils::load_bin(const std::string file_name)
+{
+  std::ifstream data_file(file_name, std::ios::binary | std::ios::ate);
+  std::ifstream::pos_type bytes = data_file.tellg();
+  std::vector<char> buffer(bytes);
+  data_file.seekg(0, std::ios::beg);
+  data_file.read(buffer.data(), bytes);
+  return buffer.data();
 }

@@ -170,6 +170,7 @@ for p1 in p1_array:
         print("no such mesh file: " + mesh)
         quit()
       os.system("cp " + run_dir + "/meshes/" + mesh + " a1c" + str(cell) + ".bmsh")
+      os.system("cp " + run_dir + "/w_* ./")      
     lumen = "lumen_lines.txt"  # the lumen tree file 
     if not os.path.exists(run_dir + "/meshes/" + lumen):
       print("no such lumen file: " + mesh)
