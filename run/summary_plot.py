@@ -15,6 +15,11 @@ nintra = 8
 dtypes = ["ca", "ip3", "cer", "volume"]
 plot_ffr = True
 
+if not os.path.exists("l1_results.dat"):
+    if "volume" in dtypes:
+        dtypes.remove("volume")
+    plot_ffr = False
+
 
 ##################################################################
 # ctypes lib for loading data
@@ -119,7 +124,8 @@ fig.set_size_inches(ncells * 3.8, nplots * 2.5)
 fig.text(0.02, 0.96, os.getcwd(), fontsize=10)
 
 x = get_time_vals("a1") # get the x-axis time values
-volumes, ffr = get_data_fluid_flow(x.shape[0])
+if plot_ffr or "volume" in dtypes:
+    volumes, ffr = get_data_fluid_flow(x.shape[0])
 for cell in range(ncells):
   dname = "a1c" + str(cell + 1)
   nodes = get_node_count(dname + ".out")

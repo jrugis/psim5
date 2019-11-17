@@ -25,3 +25,4 @@ rm psim5
 
 ml Python/3.7.3-gimkl-2018b
 srun --ntasks=1 python "SCRIPT_DIR/summary_plot.py"
+srun --ntasks=1 python "SCRIPT_DIR/summary_plot_averages.py"
