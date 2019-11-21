@@ -238,6 +238,7 @@ void cCell_calcium::make_matrices()
     // RyR and PLC spatial factors per element
     // element_data(n, RYR_e) = ((mesh->e_dfa[n] < p[d_RyR]) ? (mesh->e_dfa[n] / p[d_RyR]) : 1.0);
     // element_data(n, PLC_e) = (mesh->e_dfb[n] < p[PLCds] && mesh->e_dfa[n] > p[PLCdl]) ? 1.0 : 0.0;
+    element_data(n, PLC_e) =  (element_data(n, PLC_e) > 0.0) ? 1.0 : 0.0; // temp fix for loaded weights!!!
 
     double Ic = V * p[Dc]; // diffusion coefficients
     double Ip = V * p[Dp];
